@@ -1,0 +1,30 @@
+<div class="app-shell">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">C</span>
+      <div>
+        <div class="brand-title">Command Workbench</div>
+        <div class="brand-subtitle">Phoenix integration showcase</div>
+      </div>
+    </div>
+    <div class="user-chip">
+      <span class="user-dot" aria-hidden="true"></span>
+      <span><%= @current_user.name || @current_user.email %></span>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <nav class="app-nav">
+      <.nav_link to={~p"/"} label="Dashboard" />
+      <.nav_link to={~p"/sessions"} label="Sessions" />
+      <.nav_link to={~p"/approvals"} label="Approvals" />
+      <.nav_link to={~p"/workflows"} label="Workflows" />
+      <.nav_link to={~p"/costs"} label="Costs" />
+    </nav>
+
+    <main class="app-content">
+      <.flash_group flash={@flash} />
+      <%= @inner_content %>
+    </main>
+  </div>
+</div>

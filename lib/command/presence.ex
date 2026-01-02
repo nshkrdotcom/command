@@ -31,6 +31,22 @@ defmodule Command.Presence do
   end
 
   @doc """
+  Returns a changeset for tracking presence record changes.
+
+  ## Examples
+
+      iex> change_presence_record(presence)
+      %Ecto.Changeset{data: %PresenceRecord{}}
+
+      iex> change_presence_record(presence, %{status: "editing"})
+      %Ecto.Changeset{data: %PresenceRecord{}}
+  """
+  @spec change_presence_record(PresenceRecord.t(), map()) :: Ecto.Changeset.t()
+  def change_presence_record(%PresenceRecord{} = presence, attrs \\ %{}) do
+    PresenceRecord.create_changeset(presence, attrs)
+  end
+
+  @doc """
   Updates presence status.
   """
   @spec update_presence(PresenceRecord.t(), map()) ::
@@ -110,6 +126,22 @@ defmodule Command.Presence do
     %ActivityLog{}
     |> ActivityLog.create_changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Returns a changeset for tracking activity log changes.
+
+  ## Examples
+
+      iex> change_activity_log(log)
+      %Ecto.Changeset{data: %ActivityLog{}}
+
+      iex> change_activity_log(log, %{action: "session.update"})
+      %Ecto.Changeset{data: %ActivityLog{}}
+  """
+  @spec change_activity_log(ActivityLog.t(), map()) :: Ecto.Changeset.t()
+  def change_activity_log(%ActivityLog{} = log, attrs \\ %{}) do
+    ActivityLog.create_changeset(log, attrs)
   end
 
   @doc """

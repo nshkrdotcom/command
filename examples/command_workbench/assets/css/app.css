@@ -1,0 +1,307 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --canvas: #f6f1e8;
+    --ink: #1d1b16;
+    --ink-soft: #2c2822;
+    --accent: #e07a5f;
+    --accent-2: #3d5a80;
+    --sand: #f4ecdf;
+    --sand-deep: #eadfcd;
+  }
+
+  body {
+    background: radial-gradient(circle at top, #fdf8f2 0%, var(--canvas) 45%, #f1e7d7 100%);
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  .ambient-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(61, 90, 128, 0.08) 1px, transparent 0),
+      radial-gradient(circle at 1px 1px, rgba(224, 122, 95, 0.08) 1px, transparent 0);
+    background-size: 42px 42px, 120px 120px;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .app-shell {
+    @apply relative mx-auto max-w-6xl px-4 pb-16 pt-8;
+  }
+
+  .app-header {
+    @apply flex flex-col gap-4 md:flex-row md:items-center md:justify-between;
+  }
+
+  .brand {
+    @apply flex items-center gap-3;
+  }
+
+  .brand-mark {
+    @apply flex h-10 w-10 items-center justify-center rounded-2xl bg-accent-500 text-white font-display text-lg;
+  }
+
+  .brand-title {
+    @apply font-display text-xl tracking-tight;
+  }
+
+  .brand-subtitle {
+    @apply text-xs uppercase tracking-[0.2em] text-slate-500;
+  }
+
+  .user-chip {
+    @apply flex items-center gap-2 rounded-full border border-sand-200 bg-white/70 px-4 py-2 text-sm shadow-sm;
+  }
+
+  .user-dot {
+    @apply h-2 w-2 rounded-full bg-emerald-500;
+  }
+
+  .app-body {
+    @apply mt-8 grid gap-6 lg:grid-cols-[200px_1fr];
+  }
+
+  .app-nav {
+    @apply flex gap-3 lg:flex-col;
+  }
+
+  .nav-link {
+    @apply rounded-2xl px-4 py-2 text-sm font-semibold text-ink-700 transition hover:bg-sand-100 hover:text-ink-900;
+  }
+
+  .app-content {
+    @apply space-y-8;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-4 md:flex-row md:items-center md:justify-between;
+  }
+
+  .page-title {
+    @apply font-display text-3xl;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-slate-600;
+  }
+
+  .page-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .panel {
+    @apply rounded-3xl border border-sand-200 bg-white/80 shadow-sm backdrop-blur;
+  }
+
+  .table-wrap {
+    @apply overflow-hidden rounded-3xl border border-sand-200 bg-white/80 shadow-sm;
+  }
+
+  .table {
+    @apply w-full text-left text-sm;
+  }
+
+  .table th {
+    @apply bg-sand-100 px-4 py-3 font-medium text-slate-600;
+  }
+
+  .table td {
+    @apply border-t border-sand-100 px-4 py-3;
+  }
+
+  .table tr.is-clickable {
+    @apply cursor-pointer transition hover:bg-sand-50;
+  }
+
+  .table-actions {
+    @apply text-right whitespace-nowrap;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition;
+  }
+
+  .btn-primary {
+    @apply bg-ink-900 text-white hover:bg-ink-700;
+  }
+
+  .btn-secondary {
+    @apply border border-ink-200 text-ink-900 hover:bg-ink-50;
+  }
+
+  .btn-ghost {
+    @apply text-ink-700 hover:text-ink-900;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .form {
+    @apply space-y-4;
+  }
+
+  .form-field {
+    @apply space-y-2;
+  }
+
+  .form-label {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-slate-500;
+  }
+
+  .input {
+    @apply w-full rounded-2xl border border-sand-200 bg-white/90 px-3 py-2 text-sm text-ink-900 shadow-inner focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-200;
+  }
+
+  .textarea {
+    @apply min-h-[96px];
+  }
+
+  .select {
+    @apply bg-white;
+  }
+
+  .form-error {
+    @apply text-xs text-red-600;
+  }
+
+  .flash-group {
+    @apply space-y-2;
+  }
+
+  .flash {
+    @apply rounded-2xl px-4 py-3 text-sm font-medium;
+  }
+
+  .flash-info {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+
+  .flash-error {
+    @apply bg-rose-100 text-rose-800;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider;
+  }
+
+  .status-active {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+
+  .status-paused {
+    @apply bg-amber-100 text-amber-800;
+  }
+
+  .status-completed {
+    @apply bg-sky-100 text-sky-800;
+  }
+
+  .status-archived {
+    @apply bg-slate-100 text-slate-600;
+  }
+
+  .approval-pending {
+    @apply bg-amber-100 text-amber-800;
+  }
+
+  .approval-approved {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+
+  .approval-denied {
+    @apply bg-rose-100 text-rose-800;
+  }
+
+  .approval-auto {
+    @apply bg-sky-100 text-sky-800;
+  }
+
+  .approval-expired {
+    @apply bg-slate-100 text-slate-600;
+  }
+
+  .cost-pill {
+    @apply rounded-full bg-ink-50 px-3 py-1 text-sm font-semibold text-ink-900;
+  }
+
+  .token-pill {
+    @apply inline-flex items-center gap-2 rounded-full bg-sand-100 px-3 py-1 text-xs font-semibold text-ink-700;
+  }
+
+  .message-card {
+    @apply rounded-2xl border border-sand-200 bg-white px-4 py-3 shadow-sm;
+  }
+
+  .message-role {
+    @apply text-xs uppercase tracking-wider text-slate-500;
+  }
+
+  .message-content {
+    @apply mt-2;
+  }
+
+  .message-user {
+    @apply border-accent-200;
+  }
+
+  .message-assistant {
+    @apply border-ink-200;
+  }
+
+  .message-system {
+    @apply border-slate-200 bg-slate-50;
+  }
+
+  .message-tool {
+    @apply border-amber-200 bg-amber-50;
+  }
+
+  .message-text {
+    @apply whitespace-pre-wrap text-sm text-ink-900;
+  }
+
+  .modal {
+    @apply fixed inset-0 z-50 hidden items-center justify-center px-4;
+  }
+
+  .modal-backdrop {
+    @apply absolute inset-0 bg-ink-900/30 backdrop-blur;
+  }
+
+  .modal-panel {
+    @apply relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-sand-200 bg-white p-6 shadow-xl;
+  }
+
+  .modal-close {
+    @apply absolute right-4 top-4 text-xs uppercase tracking-wider text-slate-500 hover:text-slate-800;
+  }
+
+  .no-scroll {
+    overflow: hidden;
+  }
+}
+
+.font-body {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.font-display {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.bg-canvas {
+  background-color: var(--canvas);
+}
+
+.text-ink {
+  color: var(--ink);
+}

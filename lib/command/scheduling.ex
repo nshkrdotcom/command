@@ -25,6 +25,22 @@ defmodule Command.Scheduling do
   end
 
   @doc """
+  Returns a changeset for tracking scheduled job changes.
+
+  ## Examples
+
+      iex> change_scheduled_job(job)
+      %Ecto.Changeset{data: %ScheduledJob{}}
+
+      iex> change_scheduled_job(job, %{schedule_type: "cron"})
+      %Ecto.Changeset{data: %ScheduledJob{}}
+  """
+  @spec change_scheduled_job(ScheduledJob.t(), map()) :: Ecto.Changeset.t()
+  def change_scheduled_job(%ScheduledJob{} = job, attrs \\ %{}) do
+    ScheduledJob.create_changeset(job, attrs)
+  end
+
+  @doc """
   Gets a scheduled job by ID.
   """
   @spec get_scheduled_job(Ecto.UUID.t()) :: ScheduledJob.t() | nil

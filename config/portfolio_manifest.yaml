@@ -1,0 +1,78 @@
+# Portfolio Manifest for Command
+#
+# This configures the portfolio_core adapter registry with
+# portfolio_index implementations.
+#
+# Environment variables are expanded using ${VAR_NAME} syntax.
+# Default values use ${VAR_NAME:-default} syntax.
+
+version: "1.0"
+environment: ${MIX_ENV:-dev}
+
+adapters:
+  # Vector store using PostgreSQL with pgvector extension
+  vector_store:
+    adapter: PortfolioIndex.Adapters.VectorStore.Pgvector
+    config:
+      # Uses Command.Repo for database operations
+      repo: Command.Repo
+      index_type: hnsw
+      metric: cosine
+
+  # Embedder using Google Gemini
+  embedder:
+    adapter: PortfolioIndex.Adapters.Embedder.Gemini
+    config:
+      api_key: ${GEMINI_API_KEY:-}
+      model: text-embedding-004
+      dimensions: 768
+
+  # LLM using Anthropic Claude
+  llm:
+    adapter: PortfolioIndex.Adapters.LLM.Anthropic
+    config:
+      api_key: ${ANTHROPIC_API_KEY:-}
+      model: claude-sonnet-4-20250514
+      max_tokens: 4096
+
+  # Retriever using hybrid search (vector + fulltext)
+  retriever:
+    adapter: PortfolioIndex.RAG.Strategies.Hybrid
+    config:
+      vector_store: vector_store
+      embedder: embedder
+      k: 10
+      rrf_k: 60
+
+  # Text chunker using recursive strategy
+  chunker:
+    adapter: PortfolioIndex.Adapters.Chunker.Recursive
+    config:
+      chunk_size: 1000
+      chunk_overlap: 200
+      min_chunk_size: 100
+
+  # Reranker using LLM-based scoring
+  reranker:
+    adapter: PortfolioIndex.Adapters.Reranker.LLM
+    config:
+      llm: llm
+      top_n: 5
+
+# Optional: Router configuration for multi-provider failover
+router:
+  strategy: fallback
+  health_check_interval: 30000
+  providers:
+    - name: anthropic
+      adapter: llm
+      priority: 1
+    - name: openai
+      adapter: openai_llm
+      priority: 2
+
+# Optional: Cache configuration
+cache:
+  enabled: false
+  backend: ets
+  default_ttl: 3600

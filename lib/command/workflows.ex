@@ -23,6 +23,23 @@ defmodule Command.Workflows do
     %Workflow{}
     |> Workflow.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_workflow_change(:workflow_created)
+  end
+
+  @doc """
+  Returns a changeset for tracking workflow changes.
+
+  ## Examples
+
+      iex> change_workflow(workflow)
+      %Ecto.Changeset{data: %Workflow{}}
+
+      iex> change_workflow(workflow, %{name: "New Name"})
+      %Ecto.Changeset{data: %Workflow{}}
+  """
+  @spec change_workflow(Workflow.t(), map()) :: Ecto.Changeset.t()
+  def change_workflow(%Workflow{} = workflow, attrs \\ %{}) do
+    Workflow.create_changeset(workflow, attrs)
   end
 
   @doc """
@@ -99,6 +116,22 @@ defmodule Command.Workflows do
   end
 
   @doc """
+  Returns a changeset for tracking workflow run changes.
+
+  ## Examples
+
+      iex> change_workflow_run(run)
+      %Ecto.Changeset{data: %WorkflowRun{}}
+
+      iex> change_workflow_run(run, %{trigger_type: "manual"})
+      %Ecto.Changeset{data: %WorkflowRun{}}
+  """
+  @spec change_workflow_run(WorkflowRun.t(), map()) :: Ecto.Changeset.t()
+  def change_workflow_run(%WorkflowRun{} = run, attrs \\ %{}) do
+    WorkflowRun.create_changeset(run, attrs)
+  end
+
+  @doc """
   Gets a workflow run by ID.
   """
   @spec get_workflow_run(Ecto.UUID.t()) :: WorkflowRun.t() | nil
@@ -113,6 +146,7 @@ defmodule Command.Workflows do
     run
     |> WorkflowRun.start_changeset(attrs)
     |> Repo.update()
+    |> broadcast_workflow_run_change(:workflow_run_started)
   end
 
   @doc """
@@ -124,6 +158,7 @@ defmodule Command.Workflows do
     run
     |> WorkflowRun.complete_changeset(attrs)
     |> Repo.update()
+    |> broadcast_workflow_run_change(:workflow_run_completed)
   end
 
   @doc """
@@ -135,6 +170,7 @@ defmodule Command.Workflows do
     run
     |> WorkflowRun.failure_changeset(attrs)
     |> Repo.update()
+    |> broadcast_workflow_run_change(:workflow_run_failed)
   end
 
   @doc """
@@ -165,6 +201,22 @@ defmodule Command.Workflows do
   end
 
   @doc """
+  Returns a changeset for tracking workflow step changes.
+
+  ## Examples
+
+      iex> change_workflow_step(step)
+      %Ecto.Changeset{data: %WorkflowStep{}}
+
+      iex> change_workflow_step(step, %{step_name: "Fetch data"})
+      %Ecto.Changeset{data: %WorkflowStep{}}
+  """
+  @spec change_workflow_step(WorkflowStep.t(), map()) :: Ecto.Changeset.t()
+  def change_workflow_step(%WorkflowStep{} = step, attrs \\ %{}) do
+    WorkflowStep.create_changeset(step, attrs)
+  end
+
+  @doc """
   Gets a workflow step by ID.
   """
   @spec get_workflow_step(Ecto.UUID.t()) :: WorkflowStep.t() | nil
@@ -179,6 +231,7 @@ defmodule Command.Workflows do
     step
     |> WorkflowStep.start_changeset(attrs)
     |> Repo.update()
+    |> broadcast_workflow_step_change(:workflow_step_started)
   end
 
   @doc """
@@ -190,6 +243,7 @@ defmodule Command.Workflows do
     step
     |> WorkflowStep.complete_changeset(attrs)
     |> Repo.update()
+    |> broadcast_workflow_step_change(:workflow_step_completed)
   end
 
   @doc """
@@ -215,6 +269,41 @@ defmodule Command.Workflows do
   end
 
   # Private helpers
+
+  defp broadcast_workflow_change(result, event) do
+    case result do
+      {:ok, workflow} = success ->
+        _ = Command.PubSub.broadcast("workflow:#{workflow.id}", event, workflow)
+        _ = Command.PubSub.broadcast("user:#{workflow.user_id}:workflows", event, workflow)
+        success
+
+      error ->
+        error
+    end
+  end
+
+  defp broadcast_workflow_run_change(result, event) do
+    case result do
+      {:ok, run} = success ->
+        _ = Command.PubSub.broadcast("workflow:#{run.workflow_id}:runs", event, run)
+        _ = Command.PubSub.broadcast("workflow_run:#{run.id}", event, run)
+        success
+
+      error ->
+        error
+    end
+  end
+
+  defp broadcast_workflow_step_change(result, event) do
+    case result do
+      {:ok, step} = success ->
+        _ = Command.PubSub.broadcast("workflow_run:#{step.workflow_run_id}:steps", event, step)
+        success
+
+      error ->
+        error
+    end
+  end
 
   defp apply_workflow_filters(query, opts) do
     Enum.reduce(opts, query, fn

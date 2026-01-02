@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <%= csrf_meta_tag() %>
+    <.live_title suffix=" · Command Workbench">Command Workbench</.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+  </head>
+  <body class="min-h-screen bg-canvas text-ink font-body antialiased">
+    <div class="ambient-grid" aria-hidden="true"></div>
+    <%= @inner_content %>
+  </body>
+</html>

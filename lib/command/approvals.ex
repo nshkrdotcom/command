@@ -25,6 +25,23 @@ defmodule Command.Approvals do
     %ApprovalItem{}
     |> ApprovalItem.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_approval_change(:approval_created)
+  end
+
+  @doc """
+  Returns a changeset for tracking approval item changes.
+
+  ## Examples
+
+      iex> change_approval_item(item)
+      %Ecto.Changeset{data: %ApprovalItem{}}
+
+      iex> change_approval_item(item, %{title: "Updated"})
+      %Ecto.Changeset{data: %ApprovalItem{}}
+  """
+  @spec change_approval_item(ApprovalItem.t(), map()) :: Ecto.Changeset.t()
+  def change_approval_item(%ApprovalItem{} = item, attrs \\ %{}) do
+    ApprovalItem.create_changeset(item, attrs)
   end
 
   @doc """
@@ -44,6 +61,7 @@ defmodule Command.Approvals do
     item
     |> ApprovalItem.approve_changeset(attrs)
     |> Repo.update()
+    |> broadcast_approval_change(:approval_approved)
   end
 
   @doc """
@@ -57,6 +75,7 @@ defmodule Command.Approvals do
     item
     |> ApprovalItem.deny_changeset(attrs)
     |> Repo.update()
+    |> broadcast_approval_change(:approval_denied)
   end
 
   @doc """
@@ -99,9 +118,17 @@ defmodule Command.Approvals do
   def expire_old_approvals do
     now = DateTime.utc_now()
 
-    ApprovalItem
-    |> where([a], a.status == "pending" and a.expires_at < ^now)
-    |> Repo.update_all(set: [status: "expired", decided_at: now])
+    query = where(ApprovalItem, [a], a.status == "pending" and a.expires_at < ^now)
+    items = Repo.all(query)
+
+    {count, result} = Repo.update_all(query, set: [status: "expired", decided_at: now])
+
+    Enum.each(items, fn item ->
+      updated = %{item | status: "expired", decided_at: now}
+      broadcast_approval_change({:ok, updated}, :approval_expired)
+    end)
+
+    {count, result}
   end
 
   @doc """
@@ -124,6 +151,7 @@ defmodule Command.Approvals do
                 auto_approval_reason: rule.action_note
               })
               |> Repo.update()
+              |> broadcast_approval_change(:approval_approved)
 
             record_rule_trigger(rule)
             {:ok, updated}
@@ -135,6 +163,7 @@ defmodule Command.Approvals do
                 decision_note: rule.action_note
               })
               |> Repo.update()
+              |> broadcast_approval_change(:approval_denied)
 
             record_rule_trigger(rule)
             {:ok, updated}
@@ -158,6 +187,22 @@ defmodule Command.Approvals do
     %ApprovalRule{}
     |> ApprovalRule.create_changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Returns a changeset for tracking approval rule changes.
+
+  ## Examples
+
+      iex> change_approval_rule(rule)
+      %Ecto.Changeset{data: %ApprovalRule{}}
+
+      iex> change_approval_rule(rule, %{name: "Auto-approve tests"})
+      %Ecto.Changeset{data: %ApprovalRule{}}
+  """
+  @spec change_approval_rule(ApprovalRule.t(), map()) :: Ecto.Changeset.t()
+  def change_approval_rule(%ApprovalRule{} = rule, attrs \\ %{}) do
+    ApprovalRule.create_changeset(rule, attrs)
   end
 
   @doc """
@@ -209,6 +254,17 @@ defmodule Command.Approvals do
   end
 
   # Private helpers
+
+  defp broadcast_approval_change(result, event) do
+    case result do
+      {:ok, item} = success ->
+        _ = Command.PubSub.broadcast("user:#{item.user_id}:approvals", event, item)
+        success
+
+      error ->
+        error
+    end
+  end
 
   defp find_matching_rule(item) do
     ApprovalRule

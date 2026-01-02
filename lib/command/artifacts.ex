@@ -25,6 +25,22 @@ defmodule Command.Artifacts do
   end
 
   @doc """
+  Returns a changeset for tracking artifact changes.
+
+  ## Examples
+
+      iex> change_artifact(artifact)
+      %Ecto.Changeset{data: %Artifact{}}
+
+      iex> change_artifact(artifact, %{name: "Updated"})
+      %Ecto.Changeset{data: %Artifact{}}
+  """
+  @spec change_artifact(Artifact.t(), map()) :: Ecto.Changeset.t()
+  def change_artifact(%Artifact{} = artifact, attrs \\ %{}) do
+    Artifact.create_changeset(artifact, attrs)
+  end
+
+  @doc """
   Gets an artifact by ID.
   """
   @spec get_artifact(Ecto.UUID.t()) :: Artifact.t() | nil

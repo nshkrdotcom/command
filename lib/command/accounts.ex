@@ -31,6 +31,22 @@ defmodule Command.Accounts do
   end
 
   @doc """
+  Returns a changeset for tracking user changes.
+
+  ## Examples
+
+      iex> change_user(user)
+      %Ecto.Changeset{data: %User{}}
+
+      iex> change_user(user, %{name: "New Name"})
+      %Ecto.Changeset{data: %User{}}
+  """
+  @spec change_user(User.t(), map()) :: Ecto.Changeset.t()
+  def change_user(%User{} = user, attrs \\ %{}) do
+    User.create_changeset(user, attrs)
+  end
+
+  @doc """
   Gets a user by ID.
   """
   @spec get_user(Ecto.UUID.t()) :: User.t() | nil
@@ -111,6 +127,22 @@ defmodule Command.Accounts do
       {:ok, credential} -> {:ok, %{credential | api_key: nil}}
       error -> error
     end
+  end
+
+  @doc """
+  Returns a changeset for tracking API credential changes.
+
+  ## Examples
+
+      iex> change_api_credential(credential)
+      %Ecto.Changeset{data: %ApiCredential{}}
+
+      iex> change_api_credential(credential, %{name: "Primary Key"})
+      %Ecto.Changeset{data: %ApiCredential{}}
+  """
+  @spec change_api_credential(ApiCredential.t(), map()) :: Ecto.Changeset.t()
+  def change_api_credential(%ApiCredential{} = credential, attrs \\ %{}) do
+    ApiCredential.create_changeset(credential, attrs)
   end
 
   @doc """

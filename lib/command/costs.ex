@@ -26,11 +26,27 @@ defmodule Command.Costs do
     case result do
       {:ok, record} ->
         update_daily_summary(record)
-        {:ok, record}
+        broadcast_cost_change({:ok, record}, :cost_recorded)
 
       error ->
         error
     end
+  end
+
+  @doc """
+  Returns a changeset for tracking cost record changes.
+
+  ## Examples
+
+      iex> change_cost_record(record)
+      %Ecto.Changeset{data: %CostRecord{}}
+
+      iex> change_cost_record(record, %{cost_cents: 120})
+      %Ecto.Changeset{data: %CostRecord{}}
+  """
+  @spec change_cost_record(CostRecord.t(), map()) :: Ecto.Changeset.t()
+  def change_cost_record(%CostRecord{} = record, attrs \\ %{}) do
+    CostRecord.create_changeset(record, attrs)
   end
 
   @doc """
@@ -184,6 +200,14 @@ defmodule Command.Costs do
   end
 
   # Private helpers
+
+  defp broadcast_cost_change(result, event) do
+    case result do
+      {:ok, record} = success ->
+        _ = Command.PubSub.broadcast("user:#{record.user_id}:costs", event, record)
+        success
+    end
+  end
 
   defp update_daily_summary(record) do
     case Repo.get_by(CostDailySummary, user_id: record.user_id, day: record.day) do

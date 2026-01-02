@@ -28,6 +28,23 @@ defmodule Command.Sessions do
     %Session{}
     |> Session.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_session_change(:session_created)
+  end
+
+  @doc """
+  Returns a changeset for tracking session changes.
+
+  ## Examples
+
+      iex> change_session(session)
+      %Ecto.Changeset{data: %Session{}}
+
+      iex> change_session(session, %{name: "New Name"})
+      %Ecto.Changeset{data: %Session{}}
+  """
+  @spec change_session(Session.t(), map()) :: Ecto.Changeset.t()
+  def change_session(%Session{} = session, attrs \\ %{}) do
+    Session.create_changeset(session, attrs)
   end
 
   @doc """
@@ -35,6 +52,24 @@ defmodule Command.Sessions do
   """
   @spec get_session(Ecto.UUID.t()) :: Session.t() | nil
   def get_session(id), do: Repo.get(Session, id)
+
+  @doc """
+  Gets a session with preloaded associations.
+
+  ## Options
+
+  - `:messages` - Preload messages (default: false)
+  - `:agent_calls` - Preload agent calls (default: false)
+  - `:user` - Preload user (default: false)
+  """
+  @spec get_session_with_preloads(Ecto.UUID.t(), keyword()) :: Session.t() | nil | [map()]
+  def get_session_with_preloads(id, opts \\ []) do
+    preloads = build_preloads(opts)
+
+    Session
+    |> Repo.get(id)
+    |> Repo.preload(preloads)
+  end
 
   @doc """
   Gets a session by ID, raising if not found.
@@ -76,9 +111,12 @@ defmodule Command.Sessions do
   @spec update_session_status(Session.t(), String.t()) ::
           {:ok, Session.t()} | {:error, Ecto.Changeset.t()}
   def update_session_status(session, status) do
+    event = if status == "archived", do: :session_archived, else: :session_updated
+
     session
     |> Session.status_changeset(%{status: status})
     |> Repo.update()
+    |> broadcast_session_change(event)
   end
 
   @doc """
@@ -90,6 +128,7 @@ defmodule Command.Sessions do
     session
     |> Session.config_changeset(attrs)
     |> Repo.update()
+    |> broadcast_session_change(:session_updated)
   end
 
   @doc """
@@ -119,6 +158,7 @@ defmodule Command.Sessions do
     %Session{}
     |> Session.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_session_change(:session_created)
   end
 
   @doc """
@@ -136,6 +176,7 @@ defmodule Command.Sessions do
       total_duration_ms: session.total_duration_ms + (stats[:duration_ms] || 0)
     })
     |> Repo.update()
+    |> broadcast_session_change(:session_updated)
   end
 
   # Messages
@@ -155,6 +196,23 @@ defmodule Command.Sessions do
     %Message{}
     |> Message.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_message_change(:message_created)
+  end
+
+  @doc """
+  Returns a changeset for tracking message changes.
+
+  ## Examples
+
+      iex> change_message(message)
+      %Ecto.Changeset{data: %Message{}}
+
+      iex> change_message(message, %{content: "Updated"})
+      %Ecto.Changeset{data: %Message{}}
+  """
+  @spec change_message(Message.t(), map()) :: Ecto.Changeset.t()
+  def change_message(%Message{} = message, attrs \\ %{}) do
+    Message.create_changeset(message, attrs)
   end
 
   @doc """
@@ -208,6 +266,29 @@ defmodule Command.Sessions do
 
   # Private helpers
 
+  defp broadcast_session_change(result, event) do
+    case result do
+      {:ok, session} = success ->
+        _ = Command.PubSub.broadcast("session:#{session.id}", event, session)
+        _ = Command.PubSub.broadcast("user:#{session.user_id}:sessions", event, session)
+        success
+
+      error ->
+        error
+    end
+  end
+
+  defp broadcast_message_change(result, event) do
+    case result do
+      {:ok, message} = success ->
+        _ = Command.PubSub.broadcast("session:#{message.session_id}:messages", event, message)
+        success
+
+      error ->
+        error
+    end
+  end
+
   defp get_next_message_sequence(session) do
     Message
     |> where([m], m.session_id == ^session.id)
@@ -232,6 +313,17 @@ defmodule Command.Sessions do
       _, query ->
         query
     end)
+  end
+
+  defp build_preloads(opts) do
+    []
+    |> maybe_add_preload(opts, :messages)
+    |> maybe_add_preload(opts, :agent_calls)
+    |> maybe_add_preload(opts, :user)
+  end
+
+  defp maybe_add_preload(preloads, opts, key) do
+    if Keyword.get(opts, key, false), do: [key | preloads], else: preloads
   end
 
   defp apply_message_filters(query, opts) do

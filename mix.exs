@@ -43,7 +43,7 @@ defmodule Command.MixProject do
       # Database
       {:ecto_sql, "~> 3.11"},
       {:postgrex, "~> 0.18"},
-      {:pgvector, "~> 0.3"},
+      # Note: pgvector now provided by portfolio_index
 
       # JSON
       {:jason, "~> 1.4"},
@@ -52,8 +52,17 @@ defmodule Command.MixProject do
       {:nimble_options, "~> 1.1"},
       {:telemetry, "~> 1.2"},
 
+      # Phoenix integration
+      {:phoenix, "~> 1.7"},
+      {:phoenix_live_view, "~> 1.0"},
+      {:phoenix_pubsub, "~> 2.1"},
+
       # Security
       {:cloak_ecto, "~> 1.3"},
+
+      # Portfolio ecosystem - hexagonal architecture for RAG/LLM
+      {:portfolio_core, "~> 0.3.1"},
+      {:portfolio_index, "~> 0.3.1"},
 
       # Background jobs (optional, for scheduled jobs)
       {:oban, "~> 2.18", optional: true},
@@ -65,7 +74,8 @@ defmodule Command.MixProject do
       {:excoveralls, "~> 0.18", only: :test},
       {:mox, "~> 1.1", only: :test},
       {:ex_machina, "~> 2.8", only: :test},
-      {:faker, "~> 0.18", only: :test}
+      {:faker, "~> 0.18", only: :test},
+      {:supertester, "~> 0.4.0", only: :test}
     ]
   end
 
@@ -108,6 +118,7 @@ defmodule Command.MixProject do
     [
       name: "command",
       licenses: ["MIT"],
+      maintainers: ["nshkrdotcom"],
       links: %{
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
@@ -126,11 +137,12 @@ defmodule Command.MixProject do
       homepage_url: @source_url,
       assets: %{"assets" => "assets"},
       logo: "assets/command.svg",
-      extras: ["README.md", "SCHEMA.md", "CHANGELOG.md"],
+      extras: ["README.md", "SCHEMA.md", "CHANGELOG.md", "LICENSE"],
       groups_for_extras: [
         Introduction: ~w(README.md),
         Reference: ~w(SCHEMA.md),
-        "Release Notes": ~w(CHANGELOG.md)
+        "Release Notes": ~w(CHANGELOG.md),
+        Legal: ~w(LICENSE)
       ],
       groups_for_modules: [
         "Core Schemas": [

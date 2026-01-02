@@ -27,6 +27,23 @@ defmodule Command.Agents do
     %AgentCall{}
     |> AgentCall.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_agent_call_change(:agent_call_created)
+  end
+
+  @doc """
+  Returns a changeset for tracking agent call changes.
+
+  ## Examples
+
+      iex> change_agent_call(call)
+      %Ecto.Changeset{data: %AgentCall{}}
+
+      iex> change_agent_call(call, %{model: "claude-sonnet-4"})
+      %Ecto.Changeset{data: %AgentCall{}}
+  """
+  @spec change_agent_call(AgentCall.t(), map()) :: Ecto.Changeset.t()
+  def change_agent_call(%AgentCall{} = call, attrs \\ %{}) do
+    AgentCall.create_changeset(call, attrs)
   end
 
   @doc """
@@ -49,6 +66,7 @@ defmodule Command.Agents do
     call
     |> AgentCall.streaming_changeset()
     |> Repo.update()
+    |> broadcast_agent_call_change(:agent_call_streaming)
   end
 
   @doc """
@@ -60,6 +78,7 @@ defmodule Command.Agents do
     call
     |> AgentCall.complete_changeset(attrs)
     |> Repo.update()
+    |> broadcast_agent_call_change(:agent_call_completed)
   end
 
   @doc """
@@ -71,6 +90,7 @@ defmodule Command.Agents do
     call
     |> AgentCall.failure_changeset(attrs)
     |> Repo.update()
+    |> broadcast_agent_call_change(:agent_call_failed)
   end
 
   @doc """
@@ -114,6 +134,23 @@ defmodule Command.Agents do
     %ToolUse{}
     |> ToolUse.create_changeset(attrs)
     |> Repo.insert()
+    |> broadcast_tool_use_change(:tool_use_created)
+  end
+
+  @doc """
+  Returns a changeset for tracking tool use changes.
+
+  ## Examples
+
+      iex> change_tool_use(tool_use)
+      %Ecto.Changeset{data: %ToolUse{}}
+
+      iex> change_tool_use(tool_use, %{tool_name: "bash"})
+      %Ecto.Changeset{data: %ToolUse{}}
+  """
+  @spec change_tool_use(ToolUse.t(), map()) :: Ecto.Changeset.t()
+  def change_tool_use(%ToolUse{} = tool_use, attrs \\ %{}) do
+    ToolUse.create_changeset(tool_use, attrs)
   end
 
   @doc """
@@ -131,6 +168,7 @@ defmodule Command.Agents do
     tool_use
     |> ToolUse.approve_changeset(attrs)
     |> Repo.update()
+    |> broadcast_tool_use_change(:tool_use_approved)
   end
 
   @doc """
@@ -141,6 +179,7 @@ defmodule Command.Agents do
     tool_use
     |> ToolUse.deny_changeset(attrs)
     |> Repo.update()
+    |> broadcast_tool_use_change(:tool_use_denied)
   end
 
   @doc """
@@ -162,6 +201,7 @@ defmodule Command.Agents do
     tool_use
     |> ToolUse.complete_changeset(attrs)
     |> Repo.update()
+    |> broadcast_tool_use_change(:tool_use_completed)
   end
 
   @doc """
@@ -198,6 +238,30 @@ defmodule Command.Agents do
   end
 
   # Private helpers
+
+  defp broadcast_agent_call_change(result, event) do
+    case result do
+      {:ok, call} = success ->
+        _ = Command.PubSub.broadcast("session:#{call.session_id}:agent_calls", event, call)
+        success
+
+      error ->
+        error
+    end
+  end
+
+  defp broadcast_tool_use_change(result, event) do
+    case result do
+      {:ok, tool_use} = success ->
+        _ =
+          Command.PubSub.broadcast("session:#{tool_use.session_id}:agent_calls", event, tool_use)
+
+        success
+
+      error ->
+        error
+    end
+  end
 
   defp get_next_tool_sequence(call) do
     ToolUse

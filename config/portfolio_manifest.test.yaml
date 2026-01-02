@@ -1,0 +1,34 @@
+# Portfolio Manifest for Command - Test Environment
+#
+# Uses mock adapters for testing without external dependencies.
+
+version: "1.0"
+environment: test
+
+adapters:
+  # Mock adapters are registered programmatically in tests
+  # This manifest is minimal for test isolation
+
+  vector_store:
+    adapter: Command.Test.PortfolioMocks.MockVectorStore
+    config:
+      repo: Command.Repo
+
+  embedder:
+    adapter: Command.Test.PortfolioMocks.MockEmbedder
+    config: {}
+
+  llm:
+    adapter: Command.Test.PortfolioMocks.MockLLM
+    config: {}
+
+  retriever:
+    adapter: Command.Test.PortfolioMocks.MockRetriever
+    config: {}
+
+  chunker:
+    adapter: Command.Test.PortfolioMocks.MockChunker
+    config: {}
+
+cache:
+  enabled: false
