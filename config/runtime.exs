@@ -18,6 +18,13 @@ if config_env() == :prod do
     ssl: System.get_env("DATABASE_SSL") == "true",
     ssl_opts: [verify: :verify_none]
 
+  config :synapse, Synapse.Repo,
+    url: database_url,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    socket_options: maybe_ipv6,
+    ssl: System.get_env("DATABASE_SSL") == "true",
+    ssl_opts: [verify: :verify_none]
+
   # Vault encryption key from environment
   vault_key =
     System.get_env("VAULT_KEY") ||

@@ -15,7 +15,6 @@ defmodule Command.MixProject do
       aliases: aliases(),
       deps: deps(),
       dialyzer: dialyzer(),
-      preferred_cli_env: preferred_cli_env(),
       test_coverage: [tool: ExCoveralls],
 
       # Hex
@@ -32,6 +31,18 @@ defmodule Command.MixProject do
     [
       extra_applications: [:logger, :crypto],
       mod: {Command.Application, []}
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.html": :test,
+        credo: :test,
+        dialyzer: :test
+      ]
     ]
   end
 
@@ -60,9 +71,25 @@ defmodule Command.MixProject do
       # Security
       {:cloak_ecto, "~> 1.3"},
 
+      # Pipeline orchestration
+      {:flowstone, path: "../flowstone"},
+      # Note: flowstone_ai merged into altar_ai as Altar.AI.Integrations.FlowStone
+      # See docs/20260105/07_ai_layer_consolidation.md
+
+      # Multi-agent orchestration
+      {:synapse, path: "../synapse"},
+      # Note: Synapse.ReqLLM replaced by Altar.AI.Integrations.Synapse
+
+      # Unified AI abstraction layer (consolidates flowstone_ai, Synapse.ReqLLM)
+      # Tool contracts (ADM/LATER)
+      {:altar, path: "../ALTAR"},
+      # Unified LLM/embedding layer
+      {:altar_ai, path: "../altar_ai"},
+
       # Portfolio ecosystem - hexagonal architecture for RAG/LLM
-      {:portfolio_core, "~> 0.3.1"},
-      {:portfolio_index, "~> 0.3.1"},
+      {:portfolio_core, path: "../portfolio_core"},
+      {:portfolio_index, path: "../portfolio_index"},
+      {:portfolio_coder, path: "../portfolio_coder"},
 
       # Background jobs (optional, for scheduled jobs)
       {:oban, "~> 2.18", optional: true},
@@ -75,7 +102,7 @@ defmodule Command.MixProject do
       {:mox, "~> 1.1", only: :test},
       {:ex_machina, "~> 2.8", only: :test},
       {:faker, "~> 0.18", only: :test},
-      {:supertester, "~> 0.4.0", only: :test}
+      {:supertester, path: "../supertester", only: :test}
     ]
   end
 
@@ -101,16 +128,6 @@ defmodule Command.MixProject do
         :unknown,
         :unmatched_returns
       ]
-    ]
-  end
-
-  defp preferred_cli_env do
-    [
-      coveralls: :test,
-      "coveralls.detail": :test,
-      "coveralls.html": :test,
-      credo: :test,
-      dialyzer: :test
     ]
   end
 

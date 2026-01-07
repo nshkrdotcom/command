@@ -3,11 +3,24 @@ defmodule Command.Costs do
   The Costs context.
 
   Tracks API costs and provides reporting.
+
+  ## Examples
+
+      {:ok, cost} =
+        Command.Costs.record_ai_operation(%{
+          session_id: session.id,
+          operation: :generate,
+          model: "gpt-4o",
+          tokens_in: 100,
+          tokens_out: 50,
+          cost_usd: Decimal.new("0.002")
+        })
   """
 
   import Ecto.Query
 
   alias Command.Accounts.User
+  alias Command.AI.Cost, as: AICost
   alias Command.Costs.{CostDailySummary, CostRecord}
   alias Command.Repo
 
@@ -199,7 +212,70 @@ defmodule Command.Costs do
     end
   end
 
+  # AI Cost Tracking
+
+  @doc """
+  Records an AI operation cost entry.
+
+  Used by Altar.AI telemetry integration.
+  """
+  @spec record_ai_operation(map()) :: {:ok, AICost.t()} | {:error, Ecto.Changeset.t()}
+  def record_ai_operation(attrs) when is_map(attrs) do
+    attrs = normalize_ai_operation(attrs)
+
+    %AICost{}
+    |> AICost.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Lists AI operation costs for a session.
+  """
+  @spec get_session_costs(Ecto.UUID.t()) :: [AICost.t()]
+  def get_session_costs(session_id) do
+    AICost
+    |> where([c], c.session_id == ^session_id)
+    |> order_by([c], desc: c.inserted_at)
+    |> Repo.all()
+  end
+
   # Private helpers
+
+  defp normalize_ai_operation(attrs) do
+    attrs
+    |> normalize_operation()
+    |> normalize_metadata()
+  end
+
+  @operation_map %{
+    "generate" => :generate,
+    "embed" => :embed,
+    "classify" => :classify,
+    "code_generate" => :code_generate,
+    :generate => :generate,
+    :embed => :embed,
+    :classify => :classify,
+    :code_generate => :code_generate
+  }
+
+  defp normalize_operation(attrs) do
+    operation = Map.get(attrs, :operation) || Map.get(attrs, "operation")
+
+    normalized = Map.get(@operation_map, operation, operation)
+
+    if normalized == operation do
+      attrs
+    else
+      Map.put(attrs, :operation, normalized)
+    end
+  end
+
+  defp normalize_metadata(attrs) do
+    case Map.get(attrs, :metadata) do
+      nil -> Map.put(attrs, :metadata, %{})
+      _ -> attrs
+    end
+  end
 
   defp broadcast_cost_change(result, event) do
     case result do

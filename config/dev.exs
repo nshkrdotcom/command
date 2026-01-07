@@ -10,6 +10,16 @@ config :command, Command.Repo,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
+# Synapse Repo configuration (shared DB)
+config :synapse, Synapse.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "command_dev",
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+
 # Enable dev mode logging
 config :logger, :console, format: "[$level] $message\n"
 

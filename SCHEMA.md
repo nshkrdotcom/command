@@ -2,18 +2,20 @@
 
 ## Overview
 
-17 migrations, 21 tables covering:
+22 migrations, 27 tables covering:
 
 - **Users & Auth**: users, api_credentials
 - **Sessions & Messages**: sessions, messages
 - **Agent Execution**: agent_calls, tool_uses
 - **Workflows**: workflows, workflow_runs, workflow_steps
+- **Pipelines**: command_pipelines, command_pipeline_runs, command_pipeline_ai_operations
 - **RAG/Indexes**: indexes, context_documents, context_chunks
 - **Approvals**: approval_items, approval_rules
 - **Artifacts**: artifacts
-- **Cost Tracking**: cost_records, cost_daily_summaries
+- **Cost Tracking**: cost_records, cost_daily_summaries, ai_costs
 - **Scheduling**: scheduled_jobs
 - **Presence & Audit**: presence_records, activity_logs
+- **Orchestration**: command_agent_configs, command_agent_sessions
 
 ## Entity Relationship Summary
 
@@ -55,6 +57,12 @@
 │    │                                    └──► approval_items                 │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
+│                              PIPELINES                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  command_pipelines ───────────► command_pipeline_runs ──► command_pipeline_ai_operations
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                              RAG / INDEXES                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
@@ -68,8 +76,15 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  cost_records ──────────► cost_daily_summaries                              │
+│  ai_costs                                                                    │
 │                                                                             │
 │  scheduled_jobs                                                             │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                            ORCHESTRATION                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  command_agent_configs ───────► command_agent_sessions                      │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                         PRESENCE & ACTIVITY                                 │
@@ -347,6 +362,61 @@ Individual step executions within runs.
 | depends_on | string[] | Dependency IDs |
 | metadata | jsonb | Flexible metadata |
 
+### command_pipelines
+
+FlowStone-backed pipeline templates.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| name | string | Template name |
+| description | text | Template description |
+| status | string | "active", "archived" |
+| config | jsonb | Pipeline configuration |
+| template_id | uuid | Linked workflow template |
+| inserted_at | timestamp | Created at |
+| updated_at | timestamp | Updated at |
+
+### command_pipeline_runs
+
+Pipeline execution records.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| pipeline_id | uuid | Parent pipeline template |
+| partition | string | Partition identifier |
+| status | string | "pending", "running", "completed", "failed" |
+| flowstone_run_id | string | FlowStone run identifier |
+| session_id | uuid | Optional session |
+| user_id | uuid | Optional user |
+| started_at | timestamp | Execution start |
+| completed_at | timestamp | Execution end |
+| result | jsonb | Materialized output |
+| error | jsonb | Error payload |
+| inserted_at | timestamp | Created at |
+| updated_at | timestamp | Updated at |
+
+### command_pipeline_ai_operations
+
+AI operations executed within a pipeline run.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| pipeline_run_id | uuid | Parent pipeline run |
+| asset_name | string | Asset identifier |
+| operation | string | "generate", "embed", "classify", "code" |
+| provider | string | Provider name |
+| model | string | Model identifier |
+| tokens_in | integer | Input tokens |
+| tokens_out | integer | Output tokens |
+| cost_usd | decimal | Cost in USD |
+| duration_ms | integer | Duration in ms |
+| metadata | jsonb | Flexible metadata |
+| inserted_at | timestamp | Created at |
+| updated_at | timestamp | Updated at |
+
 ### indexes
 
 RAG index configurations.
@@ -566,6 +636,26 @@ Detailed cost tracking per API call.
 | day | date | Aggregation bucket |
 | metadata | jsonb | Flexible metadata |
 
+### ai_costs
+
+Altar.AI cost tracking per operation.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| session_id | uuid | Parent session |
+| workflow_id | uuid | Optional workflow |
+| operation | string | "generate", "embed", "classify", "code_generate" |
+| provider | string | Provider name |
+| model | string | Model identifier |
+| tokens_in | integer | Input tokens |
+| tokens_out | integer | Output tokens |
+| cost_usd | decimal | Cost in USD |
+| duration_ms | integer | Duration in ms |
+| metadata | jsonb | Flexible metadata |
+| inserted_at | timestamp | Created at |
+| updated_at | timestamp | Updated at |
+
 ### cost_daily_summaries
 
 Aggregated daily cost reports.
@@ -617,6 +707,45 @@ Workflow and task scheduling.
 | notify_on_success | boolean | Success notifications |
 | notification_channels | string[] | Notification methods |
 | metadata | jsonb | Flexible metadata |
+
+### command_agent_configs
+
+Synapse agent configuration records.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| agent_id | string | Stable agent identifier |
+| type | string | "orchestrator", "specialist" |
+| status | string | "active", "disabled" |
+| config | jsonb | Serialized Synapse config |
+| signals | jsonb | Signal subscriptions/emissions |
+| metadata | jsonb | Flexible metadata |
+| inserted_at | timestamp | Created at |
+| updated_at | timestamp | Updated at |
+
+### command_agent_sessions
+
+Agent session executions linked to Command sessions.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| agent_config_id | uuid | Parent agent config |
+| session_id | uuid | Optional Command session |
+| user_id | uuid | Optional user |
+| status | string | "pending", "running", "completed", "failed" |
+| signal_type | string | Triggering signal type |
+| signal_id | string | Signal identifier |
+| input | jsonb | Input payload |
+| output | jsonb | Output payload |
+| error | jsonb | Error payload |
+| started_at | timestamp | Started at |
+| completed_at | timestamp | Completed at |
+| duration_ms | integer | Duration in ms |
+| metadata | jsonb | Flexible metadata |
+| inserted_at | timestamp | Created at |
+| updated_at | timestamp | Updated at |
 
 ### presence_records
 

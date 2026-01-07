@@ -9,6 +9,15 @@ config :command, Command.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
+# Synapse Repo configuration for tests (shared DB)
+config :synapse, Synapse.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "command_test#{System.get_env("MIX_TEST_PARTITION")}",
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: 1
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 
@@ -32,6 +41,9 @@ config :portfolio_core, :manifest,
 # Skip adapter validation in tests - mocks are registered per-test
 config :command, skip_adapter_validation: true
 
+# Disable orchestration runtime in tests to avoid sandbox ownership issues
+config :command, Command.Orchestration, enabled: false
+
 # Hammer rate limiter configuration for tests
 config :hammer,
   backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60, cleanup_interval_ms: 60_000 * 10]}
@@ -43,7 +55,7 @@ config :portfolio_index, PortfolioIndex.Repo,
   hostname: "localhost",
   database: "portfolio_index_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: 10
+  pool_size: 2
 
 # Neo4j (Boltx) configuration for tests
 config :boltx, Boltx,

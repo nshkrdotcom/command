@@ -11,11 +11,18 @@ defmodule Command.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      Command.Repo,
-      Command.Vault,
-      {Task.Supervisor, name: Command.TaskSupervisor}
-    ]
+    Altar.AI.Integrations.Command.attach_telemetry()
+    Altar.AI.Integrations.FlowStone.setup_telemetry()
+
+    children =
+      [
+        Command.Repo,
+        Command.Vault,
+        {Task.Supervisor, name: Command.TaskSupervisor},
+        Command.Orchestration.orchestrator_child_spec(),
+        Command.Orchestration.SignalBridge
+      ]
+      |> Enum.reject(&is_nil/1)
 
     opts = [strategy: :one_for_one, name: Command.Supervisor]
 

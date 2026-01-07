@@ -11,6 +11,8 @@ defmodule Command.Factory do
   alias Command.Artifacts.Artifact
   alias Command.Costs.{CostDailySummary, CostRecord}
   alias Command.Indexes.{ContextChunk, ContextDocument, Index}
+  alias Command.Orchestration.{AgentConfig, AgentSession}
+  alias Command.Pipelines.{Execution, Template}
   alias Command.Presence.{ActivityLog, PresenceRecord}
   alias Command.Scheduling.ScheduledJob
   alias Command.Sessions.{Message, Session}
@@ -90,6 +92,7 @@ defmodule Command.Factory do
       name: sequence(:workflow_name, &"Workflow #{&1}"),
       slug: sequence(:workflow_slug, &"workflow-#{&1}"),
       status: "draft",
+      is_template: false,
       steps: [
         %{
           "id" => "step_1",
@@ -98,6 +101,51 @@ defmodule Command.Factory do
           "config" => %{}
         }
       ]
+    }
+  end
+
+  def workflow_template_factory do
+    %Workflow{
+      user: build(:user),
+      name: sequence(:workflow_template_name, &"Workflow Template #{&1}"),
+      slug: sequence(:workflow_template_slug, &"workflow-template-#{&1}"),
+      status: "active",
+      is_template: true,
+      steps: [
+        %{
+          "id" => "step_1",
+          "name" => "Template Step",
+          "type" => "agent_call",
+          "config" => %{}
+        }
+      ]
+    }
+  end
+
+  def pipeline_template_factory do
+    workflow = build(:workflow_template)
+
+    %Template{
+      name: sequence(:pipeline_name, &"Pipeline #{&1}"),
+      description: "Pipeline template",
+      status: :active,
+      config: %{
+        "module" => "Command.PipelinesTest.TestPipeline",
+        "final_asset" => "output"
+      },
+      template: workflow
+    }
+  end
+
+  def pipeline_execution_factory do
+    template = build(:pipeline_template)
+
+    %Execution{
+      pipeline: template,
+      session: build(:session),
+      user: build(:user),
+      partition: "default",
+      status: :pending
     }
   end
 
@@ -127,6 +175,30 @@ defmodule Command.Factory do
       step_config: %{},
       status: "pending",
       sequence: 1
+    }
+  end
+
+  def agent_config_factory do
+    %AgentConfig{
+      agent_id: sequence(:agent_id, &"agent_#{&1}"),
+      type: :specialist,
+      status: :active,
+      config: %{},
+      signals: %{},
+      metadata: %{}
+    }
+  end
+
+  def agent_session_factory do
+    session = build(:session)
+
+    %AgentSession{
+      agent_config: build(:agent_config),
+      session: session,
+      user: session.user,
+      status: :pending,
+      input: %{},
+      output: %{}
     }
   end
 

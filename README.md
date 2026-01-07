@@ -31,8 +31,11 @@ Command is an Elixir library for AI agent orchestration. It provides persistent 
 
 - **Sessions**: Persistent, resumable agent work contexts with branching/forking support
 - **Agent Calls**: Multi-provider LLM integration (Anthropic, OpenAI, Google, Cohere) with full lifecycle tracking
+- **Unified AI Layer**: Altar.AI-powered generation, embeddings, classification, and streaming
 - **Tool Uses**: Track and approve tool invocations with human-in-the-loop workflows
 - **Workflows**: DAG-based orchestration with step dependencies and approval gates
+- **Pipelines**: FlowStone-backed pipeline templates and executions
+- **Orchestration**: Synapse multi-agent runtimes with signal bridging
 - **Indexes**: RAG context management with pgvector-backed vector search via Portfolio ecosystem
 - **Approvals**: Configurable auto-approval rules and manual review queues
 - **Artifacts**: Versioned file/output storage with diff tracking
@@ -106,6 +109,25 @@ PortfolioCore.register(:embedder, MyApp.Embedder, %{model: "text-embedding-3-sma
 PortfolioCore.register(:llm, MyApp.LLM, %{model: "claude-sonnet-4-20250514"})
 PortfolioCore.register(:vector_store, MyApp.VectorStore, %{})
 PortfolioCore.register(:retriever, MyApp.Retriever, %{})
+```
+
+### Altar.AI Profiles
+
+Command integrates with `altar_ai` through `Command.AI`. Configure profiles like:
+
+```elixir
+config :command,
+  default_profile: :openai,
+  profiles: %{
+    openai: [
+      adapter: Altar.AI.Adapters.OpenAI,
+      adapter_opts: [api_key: System.get_env("OPENAI_API_KEY")],
+      model: "gpt-4o"
+    ],
+    fallback: [
+      adapter: Altar.AI.Adapters.Fallback
+    ]
+  }
 ```
 
 ## Setup
@@ -208,6 +230,37 @@ messages = Command.Sessions.list_messages(session)
   error_type: "rate_limit",
   error_message: "Too many requests"
 })
+```
+
+### Altar.AI Calls
+
+```elixir
+{:ok, response} = Command.AI.generate("Summarize the workflow")
+IO.puts(response.content)
+```
+
+### FlowStone Pipelines
+
+```elixir
+{:ok, template} =
+  Command.Pipelines.create_template(%{
+    name: "Daily Summary",
+    config: %{module: "MyApp.Pipelines.Summary", final_asset: :report}
+  })
+
+{:ok, execution} = Command.Pipelines.run(template, "2026-01-05")
+```
+
+### Synapse Orchestration
+
+```elixir
+{:ok, config} = Command.Orchestration.register_agent(%{
+  id: :coordinator,
+  type: :orchestrator,
+  signals: %{subscribes: [:review_request], emits: [:review_summary]}
+})
+
+{:ok, signal} = Command.Orchestration.publish(:review_request, %{review_id: "PR-123"})
 ```
 
 ### Tool Uses and Approvals
