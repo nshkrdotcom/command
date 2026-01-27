@@ -18,6 +18,14 @@ defmodule Command.Factory do
   alias Command.Sessions.{Message, Session}
   alias Command.Workflows.{Workflow, WorkflowRun, WorkflowStep}
 
+  alias Command.PromptSets.{
+    PromptSet,
+    PromptSetRun,
+    PromptStepRun,
+    PromptChangeset,
+    PromptRepoResult
+  }
+
   def user_factory do
     %User{
       email: sequence(:email, &"user#{&1}@example.com"),
@@ -330,6 +338,95 @@ defmodule Command.Factory do
       resource_id: Ecto.UUID.generate(),
       details: %{},
       occurred_at: DateTime.utc_now()
+    }
+  end
+
+  # ============================================================================
+  # Prompt Sets Factories
+  # ============================================================================
+
+  def prompt_set_factory do
+    %PromptSet{
+      name: sequence(:prompt_set_name, &"Prompt Set #{&1}"),
+      slug: sequence(:prompt_set_slug, &"prompt-set-#{&1}"),
+      prompts: [
+        %{"num" => "01", "name" => "First Prompt", "file" => "prompts/01-first.md"},
+        %{"num" => "02", "name" => "Second Prompt", "file" => "prompts/02-second.md"}
+      ],
+      commit_messages: %{
+        "01" => "Implement first feature",
+        "02" => "Implement second feature"
+      },
+      phase_names: %{
+        "1" => "Foundation"
+      },
+      config: %{
+        "project_dir" => "/tmp/test-project",
+        "default_model" => "claude-sonnet-4-20250514",
+        "default_provider" => "claude"
+      },
+      status: "active"
+    }
+  end
+
+  def prompt_set_run_factory do
+    prompt_set = build(:prompt_set)
+
+    %PromptSetRun{
+      prompt_set: prompt_set,
+      status: "pending",
+      config_snapshot: prompt_set.config,
+      total_prompts: length(prompt_set.prompts),
+      completed_prompts: 0,
+      failed_prompts: 0,
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      total_cost_usd: Decimal.new(0)
+    }
+  end
+
+  def prompt_step_run_factory do
+    run = build(:prompt_set_run)
+
+    %PromptStepRun{
+      prompt_set_run: run,
+      prompt_num: sequence(:prompt_num, &String.pad_leading("#{&1}", 2, "0")),
+      status: "pending",
+      input_tokens: 0,
+      output_tokens: 0,
+      cost_usd: Decimal.new(0),
+      retry_count: 0,
+      commit_hashes: []
+    }
+  end
+
+  def prompt_changeset_factory do
+    run = build(:prompt_set_run)
+    step = build(:prompt_step_run, prompt_set_run: run)
+
+    %PromptChangeset{
+      scope: "prompt",
+      prompt_set_run: run,
+      prompt_step_run: step,
+      status: "pending",
+      repos_total: 0,
+      repos_completed: 0,
+      repos_failed: 0,
+      pr_urls: []
+    }
+  end
+
+  def prompt_repo_result_factory do
+    run = build(:prompt_set_run)
+    step = build(:prompt_step_run, prompt_set_run: run)
+
+    %PromptRepoResult{
+      prompt_step_run: step,
+      repo_name: sequence(:repo_name, &"repo-#{&1}"),
+      status: "pending",
+      files_changed: 0,
+      insertions: 0,
+      deletions: 0
     }
   end
 end

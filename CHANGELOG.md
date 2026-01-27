@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Prompt Set Schema and Progress Tracking** - Foundational database schema for prompt execution tracking (ADR-0001)
+  - `prompt_sets` table for storing prompt set definitions with JSONB config
+  - `prompt_set_runs` table for tracking execution instances with aggregate metrics
+  - `prompt_step_runs` table for individual prompt execution state and token usage
+  - `prompt_changesets` table for prompt/run changeset aggregation (multi-repo support)
+  - `prompt_repo_results` table for per-repo execution and commit outcomes
+  - `Command.PromptSets.PromptSet` - Schema for prompt set definitions
+  - `Command.PromptSets.PromptSetRun` - Schema for execution instances with state machine
+  - `Command.PromptSets.PromptStepRun` - Schema for step-level execution tracking
+  - `Command.PromptSets.PromptChangeset` - Schema for multi-repo changeset tracking
+  - `Command.PromptSets.PromptRepoResult` - Schema for per-repo outcomes with invariant enforcement
+  - `Command.PromptSets.StateMachine` - State machine logic for runs and steps
+  - `Command.PromptSets` context module with CRUD operations and state transitions
+  - Progress state machine for runs: pending -> running -> paused -> completed/partial_success/failed/aborted
+  - Progress state machine for steps: pending -> running -> completed/partial_success/failed/skipped
+  - Token usage and cost tracking per step with run-level aggregates
+  - Resume capability from last completed step with policy-aware resume points
+  - Support for `partial_success` as resumable state for multi-repo partial completion
+  - Branch strategy support (direct, feature_branch, per_prompt_branch)
+  - Database constraints for status/commit_status alignment and invariant enforcement
 - **Artifact Provenance Storage** - Content-addressable storage with lineage tracking (ADR-0006)
   - `Command.Artifacts.Hash` - SHA-256 hash computation for artifact integrity verification
   - `Command.Artifacts.ContentStore` - Content-addressable storage (CAS) for automatic deduplication
