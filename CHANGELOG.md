@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Provider Normalization Layer** - Unified event schema for multi-provider agent interactions
+  - `Command.Event` - Unified event struct with 12 event types (`:message_start`, `:text_delta`, `:message_stop`, `:tool_use_start`, `:tool_use_delta`, `:tool_use_end`, `:tool_result`, `:file_change`, `:structured_output`, `:reasoning`, `:usage_update`, `:error`) plus `:raw` fallback
+  - `Command.Adapter` - Behaviour for provider stream adapters with `normalize_stream/2`, `normalize_event/2`, and `supports_event?/1` callbacks
+  - `Command.Adapter.Validation` - Event schema validation with strict/compatibility mode support
+  - `Command.Adapter.Claude` - Claude Agent SDK event normalization with tool input accumulation and error mapping
+  - `Command.Adapter.Codex` - Codex SDK event normalization with Thread/Turn lifecycle support
+  - `Command.Stream` - Unified stream entry point with optional buffering strategies
+  - Telemetry events for fallback usage and unknown event types
+  - Strict mode (default in production) validates all events before emission
+  - Compatibility mode (default in dev/test) generates fallbacks with telemetry warnings
+  - Parity tests ensuring structural equivalence across providers
 - `Command.FlowStone.Resources.ProgressTracker` - Pipeline execution progress tracking (DB-backed)
 - `Command.FlowStone.Resources.ArtifactStore` - Filesystem-based artifact storage with run isolation
 - `Command.FlowStone.Resources.AgentRunner` - LLM provider abstraction implementing FlowStone.Resource behaviour

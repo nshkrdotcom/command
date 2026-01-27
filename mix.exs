@@ -87,8 +87,8 @@ defmodule Command.MixProject do
       {:altar_ai, path: "../altar_ai"},
 
       # Portfolio ecosystem - hexagonal architecture for RAG/LLM
-      {:portfolio_core, path: "../portfolio_core"},
-      {:portfolio_index, path: "../portfolio_index"},
+      {:portfolio_core, path: "../portfolio_core", override: true},
+      {:portfolio_index, path: "../portfolio_index", override: true},
       {:portfolio_coder, path: "../portfolio_coder"},
 
       # Background jobs (optional, for scheduled jobs)
