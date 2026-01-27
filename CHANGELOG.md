@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Prompt Templating System** - Variable substitution, conditionals, and partials for prompt files (ADR-0009)
+  - `Command.PromptSets.Template` - Main facade for template compilation and rendering
+  - `Command.PromptSets.Template.Parser` - Parses `{{}}` syntax into internal AST
+  - `Command.PromptSets.Template.Compiler` - Validates and normalizes template AST
+  - `Command.PromptSets.Template.Renderer` - Evaluates AST with context (strict/lenient modes)
+  - `Command.PromptSets.Template.Partials` - Loads and caches partial templates from directory
+  - `Command.PromptSets.TemplateContext` - Builds template context from config sources with merge precedence
+  - Template variables: `{{variable}}` with dot-notation nested access `{{config.model}}`
+  - Template conditionals: `{{#if var}}...{{else}}...{{/if}}` and `{{#unless var}}...{{/unless}}`
+  - Template partials: `{{> partial_name}}` loaded from configurable partials directory
+  - Template defaults: `{{var | default: "value"}}` for fallback values
+  - Built-in variables: timestamp, date, prompt_num, prompt_name, run_id, phase, phase_name
+  - Strict mode (default) fails on undefined variables; lenient mode returns empty strings
+  - `Command.PromptSets.load_prompt/3` integrates templating into prompt loading pipeline
+  - Security: AST-based evaluation only, no EEx or Code.eval permitted
 - **Quality Gate Framework** - Enforcement checkpoints for workflow automation pipeline (ADR-0008)
   - `Command.Gates.GateSpec` - Gate specification struct with category, criteria, and retry config
   - `Command.Gates.GateCriterion` - Individual criterion struct with evaluator function and threshold

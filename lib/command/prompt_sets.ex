@@ -36,6 +36,63 @@ defmodule Command.PromptSets do
   }
 
   alias Command.PromptSets.StateMachine
+  alias Command.PromptSets.{Template, TemplateContext}
+
+  # ============================================================================
+  # Prompt Loading & Templating
+  # ============================================================================
+
+  @doc """
+  Loads and renders a prompt template for the given run and prompt number.
+
+  Reads the prompt file, builds a template context from the run configuration,
+  and renders the template with variable substitution, conditionals, and partials.
+
+  ## Parameters
+
+  - `run` — The `PromptSetRun` (with preloaded `prompt_set`)
+  - `prompt_num` — The prompt number (string, e.g., `"01"`)
+  - `repo_ctx` — Optional repository context map with `:current_repo`, `:current_repo_path`, `:workspace_root`
+
+  ## Returns
+
+  - `{:ok, rendered_content}` — The fully rendered prompt string
+  - `{:error, reason}` — File read, parse, or render error
+
+  ## Examples
+
+      iex> load_prompt(run, "01")
+      {:ok, "# First Prompt\\n\\nImplement the feature..."}
+  """
+  @spec load_prompt(PromptSetRun.t(), String.t(), map()) ::
+          {:ok, String.t()} | {:error, term()}
+  def load_prompt(%PromptSetRun{} = run, prompt_num, repo_ctx \\ %{}) do
+    prompt_def = get_prompt_def(run.prompt_set, prompt_num)
+    prompts_dir = get_in(run.prompt_set.config || %{}, ["prompts_dir"]) || "."
+    prompt_path = Path.join(prompts_dir, prompt_def["file"] || "")
+
+    partials_dir = get_in(run.prompt_set.config || %{}, ["templating", "partials_dir"])
+
+    strict_mode =
+      case get_in(run.prompt_set.config || %{}, ["templating", "strict_mode"]) do
+        val when is_boolean(val) -> val
+        _ -> true
+      end
+
+    with {:ok, content} <- File.read(prompt_path),
+         context <- TemplateContext.build(run, prompt_num, repo_ctx),
+         {:ok, rendered} <-
+           Template.compile_and_render(content, context,
+             partials_dir: partials_dir,
+             strict: strict_mode
+           ) do
+      {:ok, rendered}
+    end
+  end
+
+  defp get_prompt_def(%PromptSet{} = prompt_set, prompt_num) do
+    Enum.find(prompt_set.prompts || [], %{}, fn p -> p["num"] == prompt_num end)
+  end
 
   # ============================================================================
   # PromptSet CRUD
