@@ -2,7 +2,7 @@
 
 ## Overview
 
-22 migrations, 27 tables covering:
+25 migrations, 35 tables covering:
 
 - **Users & Auth**: users, api_credentials
 - **Sessions & Messages**: sessions, messages
@@ -11,6 +11,9 @@
 - **Pipelines**: command_pipelines, command_pipeline_runs, command_pipeline_ai_operations
 - **RAG/Indexes**: indexes, context_documents, context_chunks
 - **Approvals**: approval_items, approval_rules
+- **Plan Runs**: plan_runs
+- **RunIndex**: run_index.runs, run_index.steps
+- **Lineage**: lineage.traces, lineage.spans, lineage.artifacts, lineage.edges, lineage.events
 - **Artifacts**: artifacts
 - **Cost Tracking**: cost_records, cost_daily_summaries, ai_costs
 - **Scheduling**: scheduled_jobs
@@ -85,6 +88,17 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  command_agent_configs ───────► command_agent_sessions                      │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                        PLAN RUNS + RUN INDEX + LINEAGE                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  plan_runs ───────────────► run_index.runs ───────► run_index.steps          │
+│      │                          │                     │                    │
+│      │                          │                     ▼                    │
+│      │                          └──────────────────► lineage.spans          │
+│      │                                                    │                 │
+│      └────────────────────────────► lineage.traces ───────► lineage.artifacts │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                         PRESENCE & ACTIVITY                                 │
@@ -523,7 +537,7 @@ Human-in-the-loop approval queue.
 | title | string | Request summary |
 | description | text | Detailed explanation |
 | payload | jsonb | Data being approved |
-| source_type | string | "tool_use", "workflow_step", "manual" |
+| source_type | string | "tool_use", "workflow_step", "manual", "flowstone_checkpoint" |
 | source_id | uuid | Source reference |
 | context | jsonb | Reviewer context |
 | risk_level | string | "low", "medium", "high", "critical" |
@@ -551,7 +565,7 @@ Auto-approval rule definitions.
 | name | string | Rule name |
 | description | text | Rule description |
 | status | string | "active", "disabled" |
-| approval_type | string | "tool_use", "file_write", "shell_command", "*" |
+| approval_type | string | "tool_use", "file_write", "shell_command", "workflow_step", "custom", "*" |
 | tool_names | string[] | Specific tools (empty = all) |
 | conditions | jsonb | Match conditions |
 | action | string | "approve", "deny", "require_review" |
@@ -566,6 +580,182 @@ Auto-approval rule definitions.
 | applies_to_sessions | uuid[] | Session scope |
 | applies_to_workflows | uuid[] | Workflow scope |
 | metadata | jsonb | Flexible metadata |
+
+### plan_runs
+
+Persisted plan executions linked to RunIndex and Lineage.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Owner |
+| session_id | uuid | Session context |
+| plan_id | uuid | Plan identifier |
+| plan_version | string | Plan version |
+| plan_hash | string | Plan hash |
+| plan_ref | string | External reference |
+| plan_data | jsonb | Serialized plan data |
+| status | string | "queued", "running", "succeeded", "failed", "cancelled", "paused", "skipped" |
+| runtime | string | Runtime name |
+| runtime_ref | string | Runtime-specific ID |
+| run_index_run_id | uuid | Link to run_index.runs |
+| trace_id | uuid | Link to lineage.traces |
+| work_id | uuid | Work correlation ID |
+| started_at | timestamp | Start time |
+| finished_at | timestamp | End time |
+| metadata | jsonb | Flexible metadata |
+
+### run_index.runs
+
+Canonical run index for cross-runtime queries.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| root_run_id | uuid | Root run reference |
+| parent_run_id | uuid | Parent run reference |
+| plan_id | uuid | Plan identifier |
+| plan_version | string | Plan version |
+| plan_hash | string | Plan hash |
+| plan_ref | string | Plan reference |
+| runtime | string | "flowstone", "synapse", "command", "crucible" |
+| runtime_ref | string | Runtime-specific ID |
+| status | string | "queued", "running", "succeeded", "failed", "cancelled", "paused", "skipped" |
+| work_id | uuid | Work correlation ID |
+| trace_id | uuid | Lineage trace ID |
+| session_id | uuid | Command session |
+| actor_type | string | "user", "agent", "system", "service" |
+| actor_id | uuid | Actor reference |
+| tenant_id | uuid | Tenant scope |
+| inputs | jsonb | Run inputs |
+| output_artifact_refs | jsonb | Artifact refs |
+| cost_usd | decimal | Run cost in USD |
+| usage | jsonb | Usage metadata |
+| error_type | string | Error classification |
+| error_message | text | Error detail |
+| error_details | jsonb | Error metadata |
+| scheduled_at | timestamp | Scheduled time |
+| started_at | timestamp | Start time |
+| finished_at | timestamp | End time |
+
+### run_index.steps
+
+Per-step run index entries linked to spans.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| run_id | uuid | Parent run (run_index.runs) |
+| step_id | uuid | Optional plan step ID |
+| step_key | string | Stable step key |
+| action_name | string | Action name |
+| action_module | string | Action module |
+| tool_name | string | Tool name (if any) |
+| status | string | "queued", "running", "succeeded", "failed", "cancelled", "paused", "skipped" |
+| work_id | uuid | Work correlation ID |
+| trace_id | uuid | Trace reference |
+| span_id | uuid | Lineage span |
+| attempt | integer | Attempt number |
+| max_attempts | integer | Max attempts |
+| inputs | jsonb | Step inputs |
+| output_artifact_refs | jsonb | Artifact refs |
+| cost_usd | decimal | Step cost |
+| usage | jsonb | Usage metadata |
+| error_type | string | Error classification |
+| error_message | text | Error detail |
+| error_details | jsonb | Error metadata |
+| started_at | timestamp | Start time |
+| finished_at | timestamp | End time |
+
+### lineage.traces
+
+Lineage traces for cross-system execution tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| root_trace_id | uuid | Root trace |
+| parent_trace_id | uuid | Parent trace |
+| run_id | uuid | Run reference |
+| work_id | uuid | Work reference |
+| origin | string | Origin runtime |
+| origin_ref | string | Origin identifier |
+| status | string | Trace status |
+| attributes | jsonb | Trace attributes |
+| started_at | timestamp | Start time |
+| finished_at | timestamp | End time |
+
+### lineage.spans
+
+Spans emitted for actions and steps.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| trace_id | uuid | Parent trace |
+| parent_span_id | uuid | Parent span |
+| run_id | uuid | Run reference |
+| step_id | uuid | Step reference |
+| work_id | uuid | Work reference |
+| name | string | Span name |
+| kind | string | Span kind |
+| status | string | Span status |
+| attributes | jsonb | Span attributes |
+| metrics | jsonb | Span metrics |
+| error_type | string | Error type |
+| error_message | text | Error detail |
+| error_details | jsonb | Error metadata |
+| started_at | timestamp | Start time |
+| finished_at | timestamp | End time |
+
+### lineage.artifacts
+
+Artifacts emitted during execution.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| trace_id | uuid | Trace reference |
+| span_id | uuid | Span reference |
+| run_id | uuid | Run reference |
+| step_id | uuid | Step reference |
+| type | string | Artifact type |
+| uri | string | Artifact URI |
+| checksum | string | Content checksum |
+| size_bytes | bigint | Size in bytes |
+| mime_type | string | MIME type |
+| metadata | jsonb | Artifact metadata |
+| created_at | timestamp | Creation time |
+
+### lineage.edges
+
+Provenance edges between artifacts and spans.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| trace_id | uuid | Trace reference |
+| source_type | string | Source type |
+| source_id | uuid | Source reference |
+| target_type | string | Target type |
+| target_id | uuid | Target reference |
+| relationship | string | Relationship name |
+| metadata | jsonb | Edge metadata |
+
+### lineage.events
+
+Event log for lineage ingestion.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| trace_id | uuid | Trace reference |
+| span_id | uuid | Span reference |
+| event_type | string | Event type |
+| occurred_at | timestamp | Event time |
+| source | string | Event source |
+| source_ref | string | Source identifier |
+| payload | jsonb | Event payload |
 
 ### artifacts
 
@@ -828,4 +1018,11 @@ Audit trail for all user actions.
 15 - scheduled_jobs
 16 - presence_records + activity_logs
 17 - context_chunks + context_documents (pgvector)
+18 - deferred foreign keys + indexes
+19 - ai_costs
+20 - pipeline tables
+21 - agent configs + sessions
+22 - run_index tables (run_index schema)
+23 - lineage tables (lineage schema)
+24 - plan_runs
 ```

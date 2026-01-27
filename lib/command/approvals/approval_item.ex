@@ -46,7 +46,7 @@ defmodule Command.Approvals.ApprovalItem do
   @priorities ~w(low normal high critical)
   @risk_levels ~w(low medium high critical)
   @timeout_actions ~w(deny approve escalate)
-  @source_types ~w(tool_use workflow_step manual)
+  @source_types ~w(tool_use workflow_step manual flowstone_checkpoint)
 
   schema "approval_items" do
     field :approval_type, :string

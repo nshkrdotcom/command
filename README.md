@@ -33,9 +33,12 @@ Command is an Elixir library for AI agent orchestration. It provides persistent 
 - **Agent Calls**: Multi-provider LLM integration (Anthropic, OpenAI, Google, Cohere) with full lifecycle tracking
 - **Unified AI Layer**: Altar.AI-powered generation, embeddings, classification, and streaming
 - **Tool Uses**: Track and approve tool invocations with human-in-the-loop workflows
+- **Policy Metadata**: Jido.Action.Tool schemas with approval_class, side_effects, cost, and capabilities
 - **Workflows**: DAG-based orchestration with step dependencies and approval gates
+- **Plan Runs**: Persisted plan executions linked to RunIndex and Lineage IDs
 - **Pipelines**: FlowStone-backed pipeline templates and executions
 - **Orchestration**: Synapse multi-agent runtimes with signal bridging
+- **RunIndex + Lineage Sink**: Canonical run/step query layer plus LineageIR ingestion
 - **Indexes**: RAG context management with pgvector-backed vector search via Portfolio ecosystem
 - **Approvals**: Configurable auto-approval rules and manual review queues
 - **Artifacts**: Versioned file/output storage with diff tracking
@@ -265,13 +268,30 @@ IO.puts(response.content)
 
 ### Tool Uses and Approvals
 
+Tool schemas follow the `Jido.Action.Tool` format (for Jido actions, call `MyAction.to_tool()`).
+
 ```elixir
-# Create a tool use
+tool_schema = %{
+  name: "bash",
+  description: "Execute a shell command",
+  parameters_schema: %{
+    "type" => "object",
+    "properties" => %{"command" => %{"type" => "string"}},
+    "required" => ["command"]
+  },
+  policy: %{
+    approval_class: "high",
+    side_effects: ["filesystem"],
+    cost: %{usd: 0.02},
+    capabilities: ["shell"]
+  }
+}
+
+# Create a tool use (approval derived from policy metadata)
 {:ok, tool_use} = Command.Agents.create_tool_use(call, %{
-  tool_name: "bash",
+  tool_schema: tool_schema,
   tool_use_id: "toolu_123",
-  input: %{"command" => "git diff HEAD~1"},
-  requires_approval: true
+  input: %{"command" => "git diff HEAD~1"}
 })
 
 # Approve the tool use
@@ -345,6 +365,38 @@ matching_rules = Command.Approvals.find_matching_rules(user, approval_item)
 {:ok, _} = Command.Workflows.complete_step(step, %{
   output: %{"analysis" => "..."}
 })
+```
+
+### RunIndex + Lineage
+
+```elixir
+trace_id = Ecto.UUID.generate()
+
+{:ok, run} =
+  Command.RunIndex.create_run(%{
+    runtime: "command",
+    runtime_ref: "plan-run-1",
+    status: "queued",
+    session_id: session.id
+  })
+
+:ok =
+  LineageIR.Sink.emit(%LineageIR.Event{
+    type: "trace_start",
+    trace_id: trace_id,
+    source: "command",
+    source_ref: "plan-run-1",
+    payload: %LineageIR.Trace{id: trace_id, status: "running", started_at: DateTime.utc_now()}
+  })
+
+{:ok, _plan_run} =
+  Command.PlanRuns.create_plan_run(user, %{
+    session_id: session.id,
+    plan_id: Ecto.UUID.generate(),
+    status: "queued",
+    run_index_run_id: run.id,
+    trace_id: trace_id
+  })
 ```
 
 ### RAG Indexes
@@ -589,7 +641,7 @@ end
 
 ## Architecture
 
-Command follows an Elixir contexts pattern with 10 bounded contexts:
+Command follows an Elixir contexts pattern with multiple bounded contexts:
 
 ```
 lib/
@@ -635,6 +687,15 @@ lib/
 │   │   ├── approval_item.ex      # Approval queue item
 │   │   └── approval_rule.ex      # Auto-approval rule
 │   │
+│   ├── plan_runs.ex              # Plan run persistence
+│   ├── plan_runs/
+│   │   └── plan_run.ex           # Plan run schema
+│   │
+│   ├── run_index.ex              # RunIndex persistence
+│   ├── run_index/
+│   │   ├── run.ex                # RunIndex run schema
+│   │   └── step.ex               # RunIndex step schema
+│   │
 │   ├── artifacts.ex              # File/output management context
 │   ├── artifacts/
 │   │   └── artifact.ex           # Versioned artifact schema
@@ -654,15 +715,26 @@ lib/
 │   │   └── activity_log.ex       # Audit log schema
 │   │
 │   ├── portfolio.ex              # Portfolio ecosystem integration
+│   ├── policy.ex                 # Policy metadata helpers
+│   ├── flowstone/
+│   │   └── approval_bridge.ex    # Flowstone approval bridge
 │   │
 │   └── phoenix/                  # Phoenix integration
 │       ├── components.ex         # HEEx components
 │       └── live_helpers.ex       # LiveView helpers
+│
+├── lineage_ir/                   # Lineage sink + schemas
+│   ├── event.ex                  # Lineage event envelope
+│   ├── trace.ex                  # Trace schema
+│   ├── span.ex                   # Span schema
+│   ├── artifact.ex               # Artifact schema
+│   ├── provenance_edge.ex        # Edge schema
+│   └── sink/                     # Sink behaviour + adapter
 ```
 
 ## Database Schema
 
-Command uses 21 tables across 10 domains. See [SCHEMA.md](SCHEMA.md) for complete documentation.
+Command uses 35 tables across 13 domains. See [SCHEMA.md](SCHEMA.md) for complete documentation.
 
 | Domain | Tables |
 |--------|--------|
@@ -672,10 +744,15 @@ Command uses 21 tables across 10 domains. See [SCHEMA.md](SCHEMA.md) for complet
 | Workflows | `workflows`, `workflow_runs`, `workflow_steps` |
 | Indexes | `indexes`, `context_documents`, `context_chunks` |
 | Approvals | `approval_items`, `approval_rules` |
+| Plan Runs | `plan_runs` |
+| RunIndex | `run_index.runs`, `run_index.steps` |
+| Lineage | `lineage.traces`, `lineage.spans`, `lineage.artifacts`, `lineage.edges`, `lineage.events` |
 | Artifacts | `artifacts` |
-| Costs | `cost_records`, `cost_daily_summaries` |
+| Costs | `cost_records`, `cost_daily_summaries`, `ai_costs` |
 | Scheduling | `scheduled_jobs` |
 | Presence | `presence_records`, `activity_logs` |
+| Pipelines | `command_pipelines`, `command_pipeline_runs`, `command_pipeline_ai_operations` |
+| Orchestration | `command_agent_configs`, `command_agent_sessions` |
 
 All tables use UUIDs for distributed-friendly operation.
 

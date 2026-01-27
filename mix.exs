@@ -185,6 +185,30 @@ defmodule Command.MixProject do
           Command.Approvals.ApprovalItem,
           Command.Approvals.ApprovalRule
         ],
+        "Plan Runs": [
+          Command.PlanRuns,
+          Command.PlanRuns.PlanRun
+        ],
+        RunIndex: [
+          Command.RunIndex,
+          Command.RunIndex.Run,
+          Command.RunIndex.Step
+        ],
+        Lineage: [
+          LineageIR.Event,
+          LineageIR.Trace,
+          LineageIR.Span,
+          LineageIR.Artifact,
+          LineageIR.ProvenanceEdge,
+          LineageIR.EventRecord,
+          LineageIR.Sink,
+          LineageIR.Sink.Adapter,
+          LineageIR.Sink.Adapters.Ecto
+        ],
+        Policy: [
+          Command.Policy,
+          Command.Flowstone.ApprovalBridge
+        ],
         Costs: [
           Command.Costs.CostRecord,
           Command.Costs.CostDailySummary

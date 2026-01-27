@@ -8,6 +8,8 @@ defmodule Command.Agents do
   import Ecto.Query
 
   alias Command.Agents.{AgentCall, ToolUse}
+  alias Command.Approvals.ApprovalItem
+  alias Command.Policy
   alias Command.Repo
   alias Command.Sessions.Session
 
@@ -124,17 +126,52 @@ defmodule Command.Agents do
           {:ok, ToolUse.t()} | {:error, Ecto.Changeset.t()}
   def create_tool_use(call, attrs) do
     sequence = get_next_tool_sequence(call)
+    tool_schema = extract_tool_schema(attrs)
+    policy = extract_policy(attrs, tool_schema)
+    tool_name = get_attr(attrs, :tool_name) || tool_schema_name(tool_schema)
 
     attrs =
       attrs
       |> Map.put(:agent_call_id, call.id)
       |> Map.put(:session_id, call.session_id)
       |> Map.put(:sequence, sequence)
+      |> Map.put(:tool_name, tool_name)
+      |> Map.put(:requires_approval, requires_approval?(attrs, policy))
+      |> merge_tool_metadata(tool_schema, policy)
 
-    %ToolUse{}
-    |> ToolUse.create_changeset(attrs)
-    |> Repo.insert()
-    |> broadcast_tool_use_change(:tool_use_created)
+    if Map.get(attrs, :requires_approval) do
+      Repo.transaction(fn ->
+        with {:ok, tool_use} <- Repo.insert(ToolUse.create_changeset(%ToolUse{}, attrs)),
+             approval_attrs <- build_tool_approval_attrs(call, tool_use, tool_schema, policy),
+             {:ok, approval_item} <-
+               Repo.insert(ApprovalItem.create_changeset(%ApprovalItem{}, approval_attrs)),
+             {:ok, tool_use} <-
+               Repo.update(Ecto.Changeset.change(tool_use, %{approval_id: approval_item.id})) do
+          {tool_use, approval_item}
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+      |> case do
+        {:ok, {tool_use, approval_item}} ->
+          _ =
+            Command.PubSub.broadcast(
+              "user:#{call.user_id}:approvals",
+              :approval_created,
+              approval_item
+            )
+
+          broadcast_tool_use_change({:ok, tool_use}, :tool_use_created)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      %ToolUse{}
+      |> ToolUse.create_changeset(attrs)
+      |> Repo.insert()
+      |> broadcast_tool_use_change(:tool_use_created)
+    end
   end
 
   @doc """
@@ -288,4 +325,125 @@ defmodule Command.Agents do
         query
     end)
   end
+
+  defp extract_tool_schema(attrs) do
+    case get_attr(attrs, :tool_schema) do
+      nil ->
+        nil
+
+      tool_schema when is_map(tool_schema) ->
+        tool_schema
+
+      tool_schema when is_atom(tool_schema) ->
+        if function_exported?(tool_schema, :to_tool, 0) do
+          tool_schema.to_tool()
+        else
+          tool_schema
+        end
+
+      tool_schema ->
+        tool_schema
+    end
+  end
+
+  defp extract_policy(attrs, tool_schema) do
+    policy =
+      get_attr(attrs, :policy) ||
+        if is_map(tool_schema) do
+          Map.get(tool_schema, :policy) || Map.get(tool_schema, "policy")
+        end
+
+    if is_nil(policy) do
+      nil
+    else
+      Policy.normalize(policy)
+    end
+  end
+
+  defp tool_schema_name(%{} = tool_schema) do
+    Map.get(tool_schema, :name) || Map.get(tool_schema, "name")
+  end
+
+  defp tool_schema_name(_tool_schema), do: nil
+
+  defp requires_approval?(attrs, policy) do
+    case fetch_attr(attrs, :requires_approval) do
+      {:ok, value} -> value
+      :error -> Policy.approval_required?(policy)
+    end
+  end
+
+  defp merge_tool_metadata(attrs, tool_schema, policy) do
+    metadata = get_attr(attrs, :metadata) || %{}
+    sanitized_schema = sanitize_tool_schema(tool_schema)
+
+    metadata =
+      metadata
+      |> maybe_put("tool_schema", sanitized_schema)
+      |> maybe_put("policy", empty_to_nil(policy))
+
+    attrs
+    |> Map.drop(["metadata"])
+    |> Map.put(:metadata, metadata)
+  end
+
+  defp build_tool_approval_attrs(call, tool_use, tool_schema, policy) do
+    sanitized_schema = sanitize_tool_schema(tool_schema)
+
+    %{
+      user_id: call.user_id,
+      session_id: tool_use.session_id,
+      approval_type: "tool_use",
+      priority: Policy.priority(policy),
+      title: "Approve tool: #{tool_use.tool_name}",
+      description: tool_schema_description(tool_schema),
+      payload: %{
+        "tool_name" => tool_use.tool_name,
+        "tool_use_id" => tool_use.tool_use_id,
+        "input" => tool_use.input,
+        "tool_schema" => sanitized_schema,
+        "policy" => empty_to_nil(policy)
+      },
+      source_type: "tool_use",
+      source_id: tool_use.id,
+      context: %{
+        "agent_call_id" => call.id,
+        "session_id" => tool_use.session_id
+      },
+      risk_level: Policy.risk_level(policy),
+      risk_factors: Policy.risk_factors(policy)
+    }
+  end
+
+  defp tool_schema_description(%{} = tool_schema) do
+    Map.get(tool_schema, :description) || Map.get(tool_schema, "description")
+  end
+
+  defp tool_schema_description(_tool_schema), do: nil
+
+  defp sanitize_tool_schema(nil), do: nil
+
+  defp sanitize_tool_schema(%{} = tool_schema) do
+    tool_schema
+    |> Map.drop([:function, "function"])
+  end
+
+  defp sanitize_tool_schema(_tool_schema), do: nil
+
+  defp get_attr(attrs, key) do
+    Map.get(attrs, key) || Map.get(attrs, to_string(key))
+  end
+
+  defp fetch_attr(attrs, key) do
+    case Map.fetch(attrs, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> Map.fetch(attrs, to_string(key))
+    end
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp empty_to_nil(value) when value in [%{}, []], do: nil
+  defp empty_to_nil(value), do: value
 end

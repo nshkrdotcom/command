@@ -257,5 +257,85 @@ defmodule Command.AgentsTest do
       assert Enum.at(tool_uses, 0).id == tu1.id
       assert Enum.at(tool_uses, 1).id == tu2.id
     end
+
+    test "create_tool_use/2 derives approval from policy metadata" do
+      session = insert(:session)
+
+      {:ok, call} =
+        Agents.create_agent_call(session, %{
+          provider: "anthropic",
+          model: "claude-sonnet-4-20250514",
+          prompt_messages: []
+        })
+
+      tool_schema = %{
+        name: "bash",
+        description: "Execute a shell command",
+        parameters_schema: %{
+          "type" => "object",
+          "properties" => %{"command" => %{"type" => "string"}},
+          "required" => ["command"]
+        },
+        policy: %{
+          approval_class: "high",
+          side_effects: ["filesystem", "network"],
+          cost: %{usd: 1.25},
+          capabilities: ["shell"]
+        }
+      }
+
+      {:ok, tool_use} =
+        Agents.create_tool_use(call, %{
+          tool_name: "bash",
+          input: %{"command" => "ls -la"},
+          tool_schema: tool_schema
+        })
+
+      assert tool_use.requires_approval == true
+      assert tool_use.approval_id
+
+      approval = Command.Approvals.get_approval_item(tool_use.approval_id)
+      assert approval.risk_level == "high"
+      assert "filesystem" in approval.risk_factors
+      assert "shell" in approval.risk_factors
+      assert approval.payload["tool_name"] == "bash"
+    end
+
+    test "create_tool_use/2 skips approval when policy approval_class is none" do
+      session = insert(:session)
+
+      {:ok, call} =
+        Agents.create_agent_call(session, %{
+          provider: "anthropic",
+          model: "claude-sonnet-4-20250514",
+          prompt_messages: []
+        })
+
+      tool_schema = %{
+        name: "read_file",
+        description: "Read a file",
+        parameters_schema: %{
+          "type" => "object",
+          "properties" => %{"path" => %{"type" => "string"}},
+          "required" => ["path"]
+        },
+        policy: %{
+          approval_class: "none",
+          side_effects: [],
+          cost: %{usd: 0.0},
+          capabilities: ["filesystem_read"]
+        }
+      }
+
+      {:ok, tool_use} =
+        Agents.create_tool_use(call, %{
+          tool_name: "read_file",
+          input: %{"path" => "/tmp/test.txt"},
+          tool_schema: tool_schema
+        })
+
+      assert tool_use.requires_approval == false
+      assert is_nil(tool_use.approval_id)
+    end
   end
 end

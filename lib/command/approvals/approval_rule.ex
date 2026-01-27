@@ -38,7 +38,7 @@ defmodule Command.Approvals.ApprovalRule do
   @foreign_key_type :binary_id
 
   @statuses ~w(active disabled)
-  @approval_types ~w(tool_use file_write shell_command * )
+  @approval_types ~w(tool_use file_write shell_command workflow_step custom * )
   @actions ~w(approve deny require_review)
 
   schema "approval_rules" do

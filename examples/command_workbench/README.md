@@ -111,12 +111,14 @@ end
 The approval flow demonstrates human-in-the-loop patterns:
 
 1. Agent requests tool use (e.g., bash command)
-2. Tool use created with `requires_approval: true`
+2. Tool use created from a `Jido.Action.Tool` schema with policy metadata
 3. PubSub broadcasts to session subscribers
 4. LiveView shows approval UI
 5. User approves/denies
 6. Tool executes (if approved)
 7. Result sent back to agent
+
+Policy metadata (approval_class, side_effects, cost, capabilities) drives the approval queue.
 
 ### Cost Tracking
 
