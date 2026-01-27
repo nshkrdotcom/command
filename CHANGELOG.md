@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Parallel Prompt Execution** - Dependency-based parallel execution planning for prompt sets (ADR-0010)
+  - `Command.PromptSets.ExecutionPlan` - Struct for execution plan artifacts with waves, repo conflicts, and policy
+  - `Command.PromptSets.Parallel.DependencyAnalyzer` - DAG analysis with Kahn's algorithm for topological wave computation
+  - `Command.PromptSets.Parallel.RepoConflictDetector` - Detects and serializes prompts targeting the same repository
+  - `Command.PromptSets.WorkspacePlanner` - Generates ExecutionPlan from prompt set with dependency inference, group expansion, and conflict resolution
+  - `Command.PromptSets.Executor` - Builds FlowStone-compatible DAGs from ExecutionPlan (planner only, no custom Task.async)
+  - Dependency-based execution waves with automatic repo conflict serialization
+  - Sequential dependency inference for backward-compatible prompt sets without `depends_on`
+  - Repository group expansion (`@pipeline` -> `["command", "flowstone"]`) in prompt_repo_map
+  - Cycle detection and missing dependency validation in dependency graphs
+  - Configurable max_concurrency and fail_fast policy passthrough to FlowStone DAG
+  - Branch plan, changeset plan, and partial success plan resolution from prompt set config
 - **Prompt Templating System** - Variable substitution, conditionals, and partials for prompt files (ADR-0009)
   - `Command.PromptSets.Template` - Main facade for template compilation and rendering
   - `Command.PromptSets.Template.Parser` - Parses `{{}}` syntax into internal AST
