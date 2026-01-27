@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Command.FlowStone.Resources.ProgressTracker` - Pipeline execution progress tracking (DB-backed)
+- `Command.FlowStone.Resources.ArtifactStore` - Filesystem-based artifact storage with run isolation
+- `Command.FlowStone.Resources.AgentRunner` - LLM provider abstraction implementing FlowStone.Resource behaviour
+- `Command.FlowStone.Resources.ResourceSetup` - FlowStone resource registration helper
+
 ## [0.1.0] - 2025-01-02
 
 ### Added
