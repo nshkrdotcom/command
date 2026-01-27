@@ -187,7 +187,7 @@ defmodule Command.FlowStone.Resources.ArtifactStore do
     end
   end
 
-  @doc """
+  @doc ~S"""
   List all artifact IDs for the current run.
 
   Returns `{:ok, [artifact_id]}`.
@@ -195,7 +195,7 @@ defmodule Command.FlowStone.Resources.ArtifactStore do
   ## Example
 
       {:ok, ids} = ArtifactStore.list(store)
-      Enum.each(ids, fn id -> IO.puts("Artifact: #{id}") end)
+      Enum.each(ids, fn artifact_id -> IO.puts("Artifact: #{artifact_id}") end)
   """
   @spec list(t()) :: {:ok, [String.t()]} | {:error, term()}
   def list(store) do

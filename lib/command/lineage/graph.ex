@@ -30,8 +30,8 @@ defmodule Command.Lineage.Graph do
   defstruct nodes: %{}, edges: [], adjacency: %{}, reverse_adjacency: %{}
 
   @type node_key :: String.t()
-  @type node :: %{id: String.t(), type: String.t()}
-  @type edge :: %{
+  @type graph_node :: %{id: String.t(), type: String.t()}
+  @type graph_edge :: %{
           source_type: String.t(),
           source_id: String.t(),
           target_type: String.t(),
@@ -39,8 +39,8 @@ defmodule Command.Lineage.Graph do
           relationship: String.t()
         }
   @type t :: %__MODULE__{
-          nodes: %{node_key => node},
-          edges: [edge],
+          nodes: %{node_key => graph_node},
+          edges: [graph_edge],
           adjacency: %{node_key => [{node_key, String.t()}]},
           reverse_adjacency: %{node_key => [{node_key, String.t()}]}
         }
@@ -56,7 +56,7 @@ defmodule Command.Lineage.Graph do
       iex> graph = Graph.build(edges)
       %Graph{nodes: %{...}, adjacency: %{...}}
   """
-  @spec build([edge]) :: t()
+  @spec build([graph_edge]) :: t()
   def build(edges) do
     nodes = extract_nodes(edges)
     adjacency = build_adjacency(edges)

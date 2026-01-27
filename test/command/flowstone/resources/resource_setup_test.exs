@@ -39,7 +39,7 @@ defmodule Command.FlowStone.Resources.ResourceSetupTest do
         }
       }
 
-      assert :ok = ResourceSetup.register(prompt_set, run_id)
+      assert :ok = ResourceSetup.register(prompt_set, run_id, server: :test_resources)
 
       # Verify resources were registered
       assert {:ok, _agent_runner} = Resources.get(:agent_runner, :test_resources)
@@ -60,7 +60,7 @@ defmodule Command.FlowStone.Resources.ResourceSetupTest do
         }
       }
 
-      assert :ok = ResourceSetup.register(prompt_set, run_id)
+      assert :ok = ResourceSetup.register(prompt_set, run_id, server: :test_resources)
 
       # Get agent_runner and verify config
       {:ok, agent_runner} = Resources.get(:agent_runner, :test_resources)
@@ -84,7 +84,7 @@ defmodule Command.FlowStone.Resources.ResourceSetupTest do
         }
       }
 
-      assert :ok = ResourceSetup.register(prompt_set, run_id)
+      assert :ok = ResourceSetup.register(prompt_set, run_id, server: :test_resources)
 
       {:ok, progress} = Resources.get(:progress, :test_resources)
       assert progress.run_id == run_id
@@ -103,7 +103,7 @@ defmodule Command.FlowStone.Resources.ResourceSetupTest do
         }
       }
 
-      assert :ok = ResourceSetup.register(prompt_set, run_id)
+      assert :ok = ResourceSetup.register(prompt_set, run_id, server: :test_resources)
 
       {:ok, artifact_store} = Resources.get(:artifact_store, :test_resources)
       assert artifact_store.log_dir == @test_log_dir
@@ -125,7 +125,7 @@ defmodule Command.FlowStone.Resources.ResourceSetupTest do
         }
       }
 
-      assert :ok = ResourceSetup.register(prompt_set, run_id)
+      assert :ok = ResourceSetup.register(prompt_set, run_id, server: :test_resources)
 
       # Check health of each resource
       {:ok, agent_runner} = Resources.get(:agent_runner, :test_resources)
@@ -159,7 +159,7 @@ defmodule Command.FlowStone.Resources.ResourceSetupTest do
         }
       }
 
-      assert :ok = ResourceSetup.register(prompt_set, run_id)
+      assert :ok = ResourceSetup.register(prompt_set, run_id, server: :test_resources)
 
       # Get all resources
       {:ok, agent_runner} = Resources.get(:agent_runner, :test_resources)

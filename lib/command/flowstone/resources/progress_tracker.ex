@@ -46,12 +46,10 @@ defmodule Command.FlowStone.Resources.ProgressTracker do
   def setup(config) do
     run_id = config[:run_id]
 
-    cond do
-      is_nil(run_id) ->
-        {:error, :run_id_required}
-
-      true ->
-        {:ok, %{run_id: run_id}}
+    if is_nil(run_id) do
+      {:error, :run_id_required}
+    else
+      {:ok, %{run_id: run_id}}
     end
   end
 

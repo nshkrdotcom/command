@@ -82,14 +82,22 @@ defmodule Command.MixProject do
 
       # Unified AI abstraction layer (consolidates flowstone_ai, Synapse.ReqLLM)
       # Tool contracts (ADM/LATER)
-      {:altar, path: "../ALTAR"},
+      {:altar, path: "../ALTAR", override: true},
       # Unified LLM/embedding layer
       {:altar_ai, path: "../altar_ai"},
 
       # Portfolio ecosystem - hexagonal architecture for RAG/LLM
       {:portfolio_core, path: "../portfolio_core", override: true},
       {:portfolio_index, path: "../portfolio_index", override: true},
-      {:portfolio_coder, path: "../portfolio_coder"},
+      {:portfolio_coder, path: "../portfolio_coder", override: true},
+      {:portfolio_manager, path: "../portfolio_manager", override: true},
+
+      # Override conflicting dependencies from transitive deps
+      {:claude_agent_sdk, path: "../claude_agent_sdk", override: true},
+      {:codex_sdk, path: "../codex_sdk", override: true},
+      {:gemini_ex, path: "../gemini_ex", override: true},
+      {:jido_action, path: "../jido_action", override: true},
+      {:splode, "~> 0.2", override: true},
 
       # Background jobs (optional, for scheduled jobs)
       {:oban, "~> 2.18", optional: true},

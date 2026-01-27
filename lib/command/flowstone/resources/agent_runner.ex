@@ -72,23 +72,21 @@ defmodule Command.FlowStone.Resources.AgentRunner do
     execution_mode = config[:execution_mode] || :per_repo
     workspace_root = config[:workspace_root]
 
-    cond do
-      provider not in @valid_providers ->
-        {:error, :invalid_provider}
+    if provider in @valid_providers do
+      adapter = resolve_adapter(provider)
 
-      true ->
-        adapter = resolve_adapter(provider)
-
-        {:ok,
-         %{
-           provider: provider,
-           model: model,
-           tools: tools,
-           permission_mode: permission_mode,
-           execution_mode: execution_mode,
-           workspace_root: workspace_root,
-           adapter: adapter
-         }}
+      {:ok,
+       %{
+         provider: provider,
+         model: model,
+         tools: tools,
+         permission_mode: permission_mode,
+         execution_mode: execution_mode,
+         workspace_root: workspace_root,
+         adapter: adapter
+       }}
+    else
+      {:error, :invalid_provider}
     end
   end
 
@@ -100,7 +98,7 @@ defmodule Command.FlowStone.Resources.AgentRunner do
     end
   end
 
-  @doc """
+  @doc ~S"""
   Check connectivity to the LLM provider.
 
   Returns `:ok` if the provider is reachable, `{:error, reason}` otherwise.
@@ -109,7 +107,7 @@ defmodule Command.FlowStone.Resources.AgentRunner do
 
       case AgentRunner.ping(runner) do
         :ok -> IO.puts("Provider is healthy")
-        {:error, reason} -> IO.puts("Provider error: #{inspect(reason)}")
+        {:error, err} -> IO.puts("Provider error: #{inspect(err)}")
       end
   """
   @spec ping(t()) :: :ok | {:error, term()}
@@ -124,16 +122,16 @@ defmodule Command.FlowStone.Resources.AgentRunner do
     :ok
   end
 
-  @doc """
+  @doc ~S"""
   Get the current configuration.
 
   Returns a map with the runner's configuration.
 
   ## Example
 
-      config = AgentRunner.get_config(runner)
-      IO.puts("Using provider: #{config.provider}")
-      IO.puts("Using model: #{config.model}")
+      cfg = AgentRunner.get_config(runner)
+      IO.puts("Using provider: #{cfg.provider}")
+      IO.puts("Using model: #{cfg.model}")
   """
   @spec get_config(t()) :: map()
   def get_config(runner) do
