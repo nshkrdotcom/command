@@ -2,7 +2,6 @@ defmodule Command.Adapter.ClaudeTest do
   use ExUnit.Case, async: true
 
   alias Command.Adapter.Claude
-  alias Command.Event
 
   describe "normalize_stream/2" do
     test "normalizes message_start event" do
@@ -241,6 +240,20 @@ defmodule Command.Adapter.ClaudeTest do
 
       # Should generate a fallback session_id
       assert is_binary(event.session_id)
+    end
+
+    test "raises when session_id missing in strict mode" do
+      raw_events = [
+        %{"type" => "message_start", "message" => %{"id" => "msg_1"}}
+        # No session_id
+      ]
+
+      assert_raise ArgumentError, ~r/Missing required field/, fn ->
+        raw_events
+        |> to_stream()
+        |> Claude.normalize_stream(mode: :strict)
+        |> Enum.to_list()
+      end
     end
   end
 

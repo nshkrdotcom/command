@@ -2,7 +2,6 @@ defmodule Command.Adapter.CodexTest do
   use ExUnit.Case, async: true
 
   alias Command.Adapter.Codex
-  alias Command.Event
 
   # Mock Codex event structs for testing
   defmodule CodexEvents do

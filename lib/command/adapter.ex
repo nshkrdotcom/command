@@ -114,6 +114,8 @@ defmodule Command.Adapter do
       iex> Command.Adapter.select_mode([])
       :compatibility  # or :strict depending on environment
   """
+  @default_mode Application.compile_env(:command, :adapter_default_mode, :compatibility)
+
   @spec select_mode(keyword()) :: :strict | :compatibility
   def select_mode(opts) do
     cond do
@@ -123,11 +125,8 @@ defmodule Command.Adapter do
       mode = Application.get_env(:command, :adapter_mode) ->
         mode
 
-      Mix.env() == :prod ->
-        :strict
-
       true ->
-        :compatibility
+        @default_mode
     end
   end
 end

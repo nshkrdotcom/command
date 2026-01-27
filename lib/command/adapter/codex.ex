@@ -36,8 +36,8 @@ defmodule Command.Adapter.Codex do
 
   @behaviour Command.Adapter
 
-  alias Command.Event
   alias Command.Adapter.Validation
+  alias Command.Event
 
   defstruct [
     :session_id,
@@ -102,6 +102,24 @@ defmodule Command.Adapter.Codex do
 
       _ ->
         # Fall through to generic handler
+        do_normalize_unknown(event, state)
+    end
+  end
+
+  # Handle struct-based items without thread_id (AgentMessage, Reasoning, etc.)
+  defp do_normalize_event(%{__struct__: mod} = event, state) do
+    case extract_module_name(mod) do
+      "AgentMessage" ->
+        id = Map.get(event, :id)
+        text = Map.get(event, :text)
+        do_normalize_agent_message(event, id, text, state)
+
+      "Reasoning" ->
+        id = Map.get(event, :id)
+        text = Map.get(event, :text)
+        do_normalize_reasoning(event, id, text, state)
+
+      _ ->
         do_normalize_unknown(event, state)
     end
   end
@@ -216,38 +234,9 @@ defmodule Command.Adapter.Codex do
   end
 
   defp do_normalize_turn_completed(event, thread_id, turn_id, status, state) do
-    stop_reason =
-      case status do
-        "completed" -> :end_turn
-        "tool_use" -> :tool_use
-        "max_tokens" -> :max_tokens
-        _ -> :end_turn
-      end
-
-    # Also emit usage_update if usage present
+    stop_reason = normalize_stop_reason(status)
     usage = Map.get(event, :usage)
-
-    usage_event =
-      if usage do
-        %Event{
-          type: :usage_update,
-          provider: :codex,
-          session_id: thread_id,
-          run_id: turn_id,
-          prompt_id: state.prompt_id,
-          event_id: generate_uuid(),
-          sequence: state.sequence,
-          timestamp: DateTime.utc_now(),
-          data: %{
-            input_tokens: usage[:input_tokens] || usage["input_tokens"] || 0,
-            output_tokens: usage[:output_tokens] || usage["output_tokens"] || 0,
-            cache_read_tokens: nil,
-            cache_write_tokens: nil,
-            cost_usd: nil
-          },
-          raw: usage
-        }
-      end
+    usage_event = maybe_build_usage_event(usage, thread_id, turn_id, state)
 
     stop_event = %Event{
       type: :message_stop,
@@ -273,6 +262,34 @@ defmodule Command.Adapter.Codex do
 
     new_state = %{state | sequence: state.sequence + length(events)}
     {events, new_state}
+  end
+
+  defp normalize_stop_reason("completed"), do: :end_turn
+  defp normalize_stop_reason("tool_use"), do: :tool_use
+  defp normalize_stop_reason("max_tokens"), do: :max_tokens
+  defp normalize_stop_reason(_), do: :end_turn
+
+  defp maybe_build_usage_event(nil, _thread_id, _turn_id, _state), do: nil
+
+  defp maybe_build_usage_event(usage, thread_id, turn_id, state) do
+    %Event{
+      type: :usage_update,
+      provider: :codex,
+      session_id: thread_id,
+      run_id: turn_id,
+      prompt_id: state.prompt_id,
+      event_id: generate_uuid(),
+      sequence: state.sequence,
+      timestamp: DateTime.utc_now(),
+      data: %{
+        input_tokens: usage[:input_tokens] || usage["input_tokens"] || 0,
+        output_tokens: usage[:output_tokens] || usage["output_tokens"] || 0,
+        cache_read_tokens: nil,
+        cache_write_tokens: nil,
+        cost_usd: nil
+      },
+      raw: usage
+    }
   end
 
   defp do_normalize_turn_failed(event, thread_id, turn_id, error, state) do
@@ -328,7 +345,7 @@ defmodule Command.Adapter.Codex do
       error_type: categorize_codex_error(error),
       message: error[:message] || error["message"] || inspect(error),
       code: error[:code] || error["code"],
-      recoverable: is_recoverable_codex_error?(error),
+      recoverable: recoverable_codex_error?(error),
       retry_after_ms: error[:retry_after_ms] || error["retry_after_ms"]
     }
   end
@@ -354,12 +371,12 @@ defmodule Command.Adapter.Codex do
   defp categorize_codex_error(%{"kind" => "timeout"}), do: :timeout
   defp categorize_codex_error(_), do: :unknown
 
-  defp is_recoverable_codex_error?(%{kind: :rate_limit}), do: true
-  defp is_recoverable_codex_error?(%{"kind" => "rate_limit"}), do: true
-  defp is_recoverable_codex_error?(%{kind: :timeout}), do: true
-  defp is_recoverable_codex_error?(%{"kind" => "timeout"}), do: true
-  defp is_recoverable_codex_error?(%{retryable?: true}), do: true
-  defp is_recoverable_codex_error?(_), do: false
+  defp recoverable_codex_error?(%{kind: :rate_limit}), do: true
+  defp recoverable_codex_error?(%{"kind" => "rate_limit"}), do: true
+  defp recoverable_codex_error?(%{kind: :timeout}), do: true
+  defp recoverable_codex_error?(%{"kind" => "timeout"}), do: true
+  defp recoverable_codex_error?(%{retryable?: true}), do: true
+  defp recoverable_codex_error?(_), do: false
 
   defp extract_event_type(%{__struct__: struct}), do: struct
   defp extract_event_type(%{type: type}), do: type

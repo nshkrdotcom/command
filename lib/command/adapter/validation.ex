@@ -94,52 +94,33 @@ defmodule Command.Adapter.Validation do
     end
   end
 
+  @data_requirements %{
+    message_start: [:message_id, :model],
+    text_delta: [:content],
+    tool_use_start: [:tool_use_id, :tool_name],
+    tool_use_delta: [:tool_use_id],
+    tool_use_end: [:tool_use_id, :input],
+    tool_result: [:tool_use_id, :success],
+    file_change: [:path, :operation],
+    structured_output: [:content],
+    reasoning: [:text],
+    usage_update: [:input_tokens, :output_tokens],
+    message_stop: [:stop_reason],
+    error: [:error_type, :message, :recoverable]
+  }
+
   # Validates data shape based on event type
+  defp validate_type_data(%{type: :raw, data: _data}), do: :ok
+
   defp validate_type_data(%{type: type, data: data}) when is_map(data) do
-    case type do
-      :message_start ->
-        validate_fields(data, [:message_id, :model])
+    case Map.get(@data_requirements, type) do
+      nil ->
+        {:error, {:unknown_event_type, type}}
 
-      :text_delta ->
-        validate_fields(data, [:content]) &&
-          validate_type(data, :content, &is_binary/1)
-
-      :tool_use_start ->
-        validate_fields(data, [:tool_use_id, :tool_name])
-
-      :tool_use_delta ->
-        validate_fields(data, [:tool_use_id])
-
-      :tool_use_end ->
-        validate_fields(data, [:tool_use_id, :input])
-
-      :tool_result ->
-        validate_fields(data, [:tool_use_id, :success])
-
-      :file_change ->
-        validate_fields(data, [:path, :operation])
-
-      :structured_output ->
-        validate_fields(data, [:content])
-
-      :reasoning ->
-        validate_fields(data, [:text])
-
-      :usage_update ->
-        validate_fields(data, [:input_tokens, :output_tokens])
-
-      :message_stop ->
-        validate_fields(data, [:stop_reason])
-
-      :error ->
-        validate_fields(data, [:error_type, :message, :recoverable])
-
-      :raw ->
-        # Raw events can have any structure
-        :ok
-
-      unknown_type ->
-        {:error, {:unknown_event_type, unknown_type}}
+      required_fields ->
+        with :ok <- validate_fields(data, required_fields) do
+          validate_type_specific(type, data)
+        end
     end
   end
 
@@ -158,6 +139,10 @@ defmodule Command.Adapter.Validation do
       fields -> {:error, {:missing_data_fields, fields}}
     end
   end
+
+  # Additional type-specific validation beyond field presence
+  defp validate_type_specific(:text_delta, data), do: validate_type(data, :content, &is_binary/1)
+  defp validate_type_specific(_type, _data), do: :ok
 
   # Helper: Validate that a field has a specific type
   defp validate_type(data, field, type_check_fn) do

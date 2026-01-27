@@ -49,8 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Command.Adapter` - Behaviour for provider stream adapters with `normalize_stream/2`, `normalize_event/2`, and `supports_event?/1` callbacks
   - `Command.Adapter.Validation` - Event schema validation with strict/compatibility mode support
   - `Command.Adapter.Claude` - Claude Agent SDK event normalization with tool input accumulation and error mapping
-  - `Command.Adapter.Codex` - Codex SDK event normalization with Thread/Turn lifecycle support
+  - `Command.Adapter.Codex` - Codex SDK event normalization with Thread/Turn lifecycle support and struct-based item matching
+  - `Command.Adapter.Fallback` - Compatibility mode fallback generation with per-field telemetry
   - `Command.Stream` - Unified stream entry point with optional buffering strategies
+  - `Command.AI.Options` - Option layering for provider-specific AI execution (prompt-set defaults → run overrides → prompt overrides) with deep-merge for `claude_opts`, `codex_opts`, `codex_thread_opts`
   - Telemetry events for fallback usage and unknown event types
   - Strict mode (default in production) validates all events before emission
   - Compatibility mode (default in dev/test) generates fallbacks with telemetry warnings
@@ -59,6 +61,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Command.FlowStone.Resources.ArtifactStore` - Filesystem-based artifact storage with run isolation
 - `Command.FlowStone.Resources.AgentRunner` - LLM provider abstraction implementing FlowStone.Resource behaviour
 - `Command.FlowStone.Resources.ResourceSetup` - FlowStone resource registration helper
+- `Command.FlowStone.Resources.VCS` - FlowStone resource for VCS context injection
+  - Configurable adapter with default to Git CLI
+  - Convenience functions delegating to adapter for all VCS operations
+  - Health check validates repository existence
+- `Command.Steps.Git` - FlowStone step handlers for VCS operations (ADR-0004)
+  - `:status` operation returns repository status map
+  - `:commit` operation stages all, commits, returns hash (or :no_changes for clean repos)
+  - `:diff` operation supports both ref comparison and uncommitted diff
+  - Resource extraction from FlowStone context
+- Telemetry instrumentation for VCS operations via `[:portfolio, :vcs, :*]` events
 
 ## [0.1.0] - 2025-01-02
 

@@ -37,8 +37,8 @@ defmodule Command.Adapter.Claude do
 
   @behaviour Command.Adapter
 
-  alias Command.Event
   alias Command.Adapter.Validation
+  alias Command.Event
 
   defstruct [
     :session_id,
@@ -426,7 +426,7 @@ defmodule Command.Adapter.Claude do
       error_type: categorize_claude_error(error),
       message: error["message"] || inspect(error),
       code: error["type"],
-      recoverable: is_recoverable_claude_error?(error),
+      recoverable: recoverable_claude_error?(error),
       retry_after_ms: nil
     }
   end
@@ -437,9 +437,9 @@ defmodule Command.Adapter.Claude do
   defp categorize_claude_error(%{"type" => "invalid_request_error"}), do: :invalid_request
   defp categorize_claude_error(_), do: :unknown
 
-  defp is_recoverable_claude_error?(%{"type" => "overloaded_error"}), do: true
-  defp is_recoverable_claude_error?(%{"type" => "api_error"}), do: true
-  defp is_recoverable_claude_error?(_), do: false
+  defp recoverable_claude_error?(%{"type" => "overloaded_error"}), do: true
+  defp recoverable_claude_error?(%{"type" => "api_error"}), do: true
+  defp recoverable_claude_error?(_), do: false
 
   defp handle_required(value, _field, _mode) when not is_nil(value), do: value
 
