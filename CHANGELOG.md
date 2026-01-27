@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `mix command.prompts` Mix task for prompt set execution (ADR-0005)
+- `Command.CLI.PromptRunner` for execution orchestration
+- `Command.CLI.ProgressDisplay` for TUI/JSON progress output
+- `Command.CLI.ConfigLoader` for config file parsing
+- `Command.CLI.LegacyAdapter` for run_prompts.exs compatibility
+- `Command.CLI.ErrorHandler` for error formatting and recovery hints
+- `Command.Progress.FileMirror` for file-based progress compatibility
+- Support for --run, --list, --dry-run, --continue commands
+- Support for --plan-only and --validate commands
+- Support for --provider, --model, --no-commit flags
+- Support for --partial-mode, --partial-continue, --force-continue flags
+- Support for --repo-override NAME:PATH overrides
+- Support for --file-only mode for standalone execution
+- TUI spinner and progress bar for interactive execution
+- JSON event emission for CI/CD pipelines
 - **Prompt Set Schema and Progress Tracking** - Foundational database schema for prompt execution tracking (ADR-0001)
   - `prompt_sets` table for storing prompt set definitions with JSONB config
   - `prompt_set_runs` table for tracking execution instances with aggregate metrics

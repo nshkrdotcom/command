@@ -370,7 +370,7 @@ defmodule Command.CLI.ConfigLoader do
     # Split content by actual marker lines (not escaped ones)
     lines = String.split(content, "\n")
 
-    {messages, _current_key, _current_msg} =
+    {messages, last_key, last_msg} =
       Enum.reduce(lines, {%{}, nil, []}, fn line, {acc, current_key, current_msg} ->
         cond do
           # Check if line is an exact marker (not escaped, no leading space)
@@ -385,13 +385,13 @@ defmodule Command.CLI.ConfigLoader do
               end
 
             # Extract new marker info
-            [[_, num, repo]] = Regex.scan(marker_regex, line)
-
             new_key =
-              if repo && repo != "" do
-                "#{num}:#{repo}"
-              else
-                num
+              case Regex.scan(marker_regex, line) do
+                [[_, num, repo]] when repo != "" ->
+                  "#{num}:#{repo}"
+
+                [[_, num | _]] ->
+                  num
               end
 
             {acc, new_key, []}
@@ -409,9 +409,9 @@ defmodule Command.CLI.ConfigLoader do
 
     # Don't forget the last message
     messages =
-      if _current_key do
-        msg = _current_msg |> Enum.reverse() |> Enum.join("\n") |> String.trim()
-        Map.put(messages, _current_key, msg)
+      if last_key do
+        msg = last_msg |> Enum.reverse() |> Enum.join("\n") |> String.trim()
+        Map.put(messages, last_key, msg)
       else
         messages
       end
