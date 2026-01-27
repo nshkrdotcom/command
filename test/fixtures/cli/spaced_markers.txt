@@ -1,0 +1,7 @@
+=== COMMIT 01 ===
+feat(test): Test commit
+
+This message contains a marker with leading space:
+ === COMMIT 02 ===
+
+That should be treated as content, not a delimiter.

@@ -1,0 +1,4 @@
+# Format: num|phase|sp|name|file
+01|1|3|Database schema|prompts/01-schema.md
+02|1|5|Core implementation|prompts/02-core.md
+03|2|3|Integration|prompts/03-integration.md

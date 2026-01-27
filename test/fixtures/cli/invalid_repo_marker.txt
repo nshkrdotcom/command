@@ -1,0 +1,5 @@
+=== COMMIT 01 ===
+feat(test): Test commit
+
+=== COMMIT 02:invalid repo name! ===
+This should fail validation

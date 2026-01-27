@@ -1,0 +1,7 @@
+=== COMMIT 01 ===
+feat(test): Test commit
+
+This message contains a literal marker:
+\=== COMMIT 02 ===
+
+That should be treated as content, not a delimiter.

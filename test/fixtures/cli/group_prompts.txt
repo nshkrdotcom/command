@@ -1,0 +1,5 @@
+# Format: num|phase|sp|name|file|target_repos
+01|1|3|Database schema|prompts/01-schema.md
+02|1|5|Backend work|prompts/02-backend.md|@backend
+03|2|3|Frontend work|prompts/03-frontend.md|@frontend
+04|2|5|Mixed work|prompts/04-mixed.md|command,@frontend

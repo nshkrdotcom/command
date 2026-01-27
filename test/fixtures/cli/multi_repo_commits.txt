@@ -1,0 +1,17 @@
+=== COMMIT 01 ===
+feat(schema): Add database schema
+
+=== COMMIT 02:command ===
+feat(command): Add FlowStone bindings
+
+=== COMMIT 02:flowstone ===
+feat(flowstone): Add resources and pipeline
+
+=== COMMIT 03:command ===
+feat(command): Integration part 1
+
+=== COMMIT 03:flowstone ===
+feat(flowstone): Integration part 2
+
+=== COMMIT 03:synapse ===
+feat(synapse): Integration part 3
