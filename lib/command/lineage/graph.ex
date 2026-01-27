@@ -96,7 +96,7 @@ defmodule Command.Lineage.Graph do
     max_depth = Keyword.get(opts, :max_depth, 100)
     filter_rel = Keyword.get(opts, :relationship)
 
-    do_traverse(graph.reverse_adjacency, node_key, max_depth, filter_rel, MapSet.new())
+    do_traverse(graph.adjacency, node_key, max_depth, filter_rel, MapSet.new())
   end
 
   @doc """
@@ -175,22 +175,16 @@ defmodule Command.Lineage.Graph do
     end)
   end
 
-  defp do_traverse(_adjacency, _key, 0, _filter, visited), do: MapSet.to_list(visited)
+  defp do_traverse(_adjacency, key, 0, _filter, visited) do
+    MapSet.put(visited, key) |> MapSet.to_list()
+  end
 
   defp do_traverse(adjacency, key, depth, filter, visited) do
     if MapSet.member?(visited, key) do
       MapSet.to_list(visited)
     else
       visited = MapSet.put(visited, key)
-
-      neighbors = Map.get(adjacency, key, [])
-
-      neighbors =
-        if filter do
-          Enum.filter(neighbors, fn {_k, rel} -> rel == filter end)
-        else
-          neighbors
-        end
+      neighbors = filtered_neighbors(adjacency, key, filter)
 
       Enum.reduce(neighbors, visited, fn {neighbor_key, _rel}, acc ->
         result = do_traverse(adjacency, neighbor_key, depth - 1, filter, acc)
@@ -198,6 +192,14 @@ defmodule Command.Lineage.Graph do
       end)
       |> MapSet.to_list()
     end
+  end
+
+  defp filtered_neighbors(adjacency, key, nil), do: Map.get(adjacency, key, [])
+
+  defp filtered_neighbors(adjacency, key, filter) do
+    adjacency
+    |> Map.get(key, [])
+    |> Enum.filter(fn {_k, rel} -> rel == filter end)
   end
 
   defp bfs(adjacency, source, target) do
@@ -213,22 +215,30 @@ defmodule Command.Lineage.Graph do
         nil
 
       {{:value, {current, path}}, queue} ->
-        if current == target do
-          Enum.reverse(path)
-        else
-          neighbors = Map.get(adjacency, current, [])
+        bfs_process_node(adjacency, queue, visited, target, current, path)
+    end
+  end
 
-          {new_queue, new_visited} =
-            Enum.reduce(neighbors, {queue, visited}, fn {neighbor, _rel}, {q, v} ->
-              if MapSet.member?(v, neighbor) do
-                {q, v}
-              else
-                {:queue.in({neighbor, [neighbor | path]}, q), MapSet.put(v, neighbor)}
-              end
-            end)
+  defp bfs_process_node(_adjacency, _queue, _visited, target, target, path) do
+    Enum.reverse(path)
+  end
 
-          bfs_loop(adjacency, new_queue, new_visited, target)
-        end
+  defp bfs_process_node(adjacency, queue, visited, target, current, path) do
+    neighbors = Map.get(adjacency, current, [])
+
+    {new_queue, new_visited} =
+      Enum.reduce(neighbors, {queue, visited}, fn {neighbor, _rel}, {q, v} ->
+        bfs_enqueue_neighbor(neighbor, path, q, v)
+      end)
+
+    bfs_loop(adjacency, new_queue, new_visited, target)
+  end
+
+  defp bfs_enqueue_neighbor(neighbor, path, queue, visited) do
+    if MapSet.member?(visited, neighbor) do
+      {queue, visited}
+    else
+      {:queue.in({neighbor, [neighbor | path]}, queue), MapSet.put(visited, neighbor)}
     end
   end
 end

@@ -47,27 +47,73 @@ defmodule Command.Artifacts.RetentionWorker do
         queues: [artifacts: 10]
   """
 
-  # Uncomment when Oban is available:
-  # use Oban.Worker, queue: :artifacts, max_attempts: 3
-  #
-  # @impl Oban.Worker
-  # def perform(%Oban.Job{}) do
-  #   Command.Artifacts.Retention.soft_delete_expired()
-  # end
+  import Ecto.Query
+  alias Command.Artifacts.Artifact
+  alias Command.Lineage.ProvenanceEdge
+  alias Command.Repo
+
+  @retention_days_by_type %{
+    "stream_log" => 90,
+    "transcript" => 90,
+    "events" => 90,
+    "diff" => 365,
+    "response" => 365,
+    "input" => 365,
+    "output" => 365,
+    "manifest" => 365,
+    "progress" => 365,
+    "cost" => 365,
+    "telemetry" => 365
+  }
+
+  @pinning_relationships ~w(released_in implements)
 
   @doc """
   Perform retention cleanup (soft delete expired artifacts).
 
-  This function can be called directly for testing or manual execution.
-  In production, it would be called by Oban.
+  Queries artifacts past their retention period, excludes pinned artifacts,
+  and marks them as soft-deleted by setting `deleted_at`.
+
+  Returns `{:ok, count}` where count is the number of soft-deleted artifacts.
   """
+  @spec perform() :: {:ok, non_neg_integer()}
   def perform do
-    # Placeholder implementation
-    # Full implementation would:
-    # 1. Query artifacts past their retention period
-    # 2. Exclude pinned artifacts (with released_in/implements/approval edges)
-    # 3. Mark as soft-deleted (set deleted_at)
-    # 4. Delete content files for non-deduplicated types
-    :ok
+    now = DateTime.utc_now()
+    pinned_ids = pinned_artifact_ids()
+
+    count =
+      @retention_days_by_type
+      |> Enum.reduce(0, fn {type, days}, acc ->
+        cutoff = DateTime.add(now, -days * 86_400, :second)
+
+        {updated, _} =
+          from(a in Artifact,
+            where: a.artifact_type == ^type,
+            where: a.inserted_at < ^cutoff,
+            where: is_nil(a.deleted_at),
+            where: a.id not in ^pinned_ids
+          )
+          |> Repo.update_all(set: [deleted_at: now])
+
+        acc + updated
+      end)
+
+    {:ok, count}
+  end
+
+  @doc """
+  Returns the list of artifact IDs that are pinned via provenance edges.
+
+  Pinned artifacts have provenance edges with `released_in` or `implements`
+  relationships and are excluded from automatic retention deletion.
+  """
+  @spec pinned_artifact_ids() :: [String.t()]
+  def pinned_artifact_ids do
+    from(e in ProvenanceEdge,
+      where: e.source_type == "artifact" and e.relationship in ^@pinning_relationships,
+      select: e.source_id,
+      distinct: true
+    )
+    |> Repo.all()
   end
 end

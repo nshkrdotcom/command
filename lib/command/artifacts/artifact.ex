@@ -51,7 +51,9 @@ defmodule Command.Artifacts.Artifact do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @artifact_types ~w(file code diff image document archive other)
+  @artifact_types ~w(file code diff image document archive other
+    stream_log transcript prompt response events input output
+    manifest progress cost telemetry test_report traceability approval)
   @storage_backends ~w(local s3 inline)
   @visibilities ~w(private shared public)
   @retention_policies ~w(permanent session temporary)
@@ -87,6 +89,14 @@ defmodule Command.Artifacts.Artifact do
     field :retention_policy, :string
     field :tags, {:array, :string}, default: []
     field :metadata, :map, default: %{}
+
+    # Provenance fields (ADR-0006)
+    field :run_id, :binary_id
+    field :step_id, :binary_id
+    field :prompt_num, :string
+    field :content_hash, :string
+    field :verified_at, :utc_datetime_usec
+    field :deleted_at, :utc_datetime_usec
 
     belongs_to :user, Command.Accounts.User
     belongs_to :session, Command.Sessions.Session
@@ -125,6 +135,10 @@ defmodule Command.Artifacts.Artifact do
       :git_commit,
       :git_repo,
       :git_path,
+      :run_id,
+      :step_id,
+      :prompt_num,
+      :content_hash,
       :visibility,
       :shared_with_user_ids,
       :expires_at,

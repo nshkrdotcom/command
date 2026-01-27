@@ -23,8 +23,8 @@ defmodule Command.Lineage.EdgesTest do
       source = %{type: "artifact", id: Ecto.UUID.generate()}
       target = %{type: "run", id: Ecto.UUID.generate()}
 
-      {:ok, edge1} = Edges.record(source, target, "created_by", %{})
-      {:ok, edge2} = Edges.record(source, target, "created_by", %{foo: "bar"})
+      {:ok, _edge1} = Edges.record(source, target, "created_by", %{})
+      {:ok, _edge2} = Edges.record(source, target, "created_by", %{foo: "bar"})
 
       # Second call returns :ok but doesn't create duplicate
       edges =
@@ -40,9 +40,8 @@ defmodule Command.Lineage.EdgesTest do
       source = %{type: "artifact", id: Ecto.UUID.generate()}
       target = %{type: "run", id: Ecto.UUID.generate()}
 
-      assert_raise Ecto.InvalidChangesetError, fn ->
-        Edges.record(source, target, "invalid_relationship", %{})
-      end
+      {:error, changeset} = Edges.record(source, target, "invalid_relationship", %{})
+      assert %{relationship: ["is invalid"]} = errors_on(changeset)
     end
   end
 

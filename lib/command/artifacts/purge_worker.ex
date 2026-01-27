@@ -23,26 +23,60 @@ defmodule Command.Artifacts.PurgeWorker do
         ]
   """
 
-  # Uncomment when Oban is available:
-  # use Oban.Worker, queue: :artifacts, max_attempts: 3
-  #
-  # @impl Oban.Worker
-  # def perform(%Oban.Job{}) do
-  #   Command.Artifacts.Retention.hard_delete_expired()
-  # end
+  import Ecto.Query
+  alias Command.Artifacts.Artifact
+  alias Command.Lineage.ProvenanceEdge
+  alias Command.Repo
+
+  @default_grace_period_days 30
 
   @doc """
   Perform hard deletion of expired artifacts.
 
   Artifacts that have been soft-deleted for longer than the grace period
-  are permanently deleted along with their provenance edges.
+  (default: #{@default_grace_period_days} days) are permanently deleted
+  along with their associated provenance edges.
+
+  Returns `{:ok, count}` where count is the number of hard-deleted artifacts.
   """
-  def perform do
-    # Placeholder implementation
-    # Full implementation would:
-    # 1. Query soft-deleted artifacts older than grace period
-    # 2. Delete associated provenance edges
-    # 3. Delete artifact metadata records
-    :ok
+  @spec perform(keyword()) :: {:ok, non_neg_integer()}
+  def perform(opts \\ []) do
+    grace_days = Keyword.get(opts, :grace_period_days, @default_grace_period_days)
+    cutoff = DateTime.add(DateTime.utc_now(), -grace_days * 86_400, :second)
+
+    # Find artifacts eligible for hard delete
+    artifact_ids =
+      from(a in Artifact,
+        where: not is_nil(a.deleted_at),
+        where: a.deleted_at < ^cutoff,
+        select: a.id
+      )
+      |> Repo.all()
+
+    if Enum.empty?(artifact_ids) do
+      {:ok, 0}
+    else
+      artifact_id_strings = Enum.map(artifact_ids, &to_string/1)
+
+      # Delete associated provenance edges
+      from(e in ProvenanceEdge,
+        where: e.source_type == "artifact" and e.source_id in ^artifact_id_strings
+      )
+      |> Repo.delete_all()
+
+      from(e in ProvenanceEdge,
+        where: e.target_type == "artifact" and e.target_id in ^artifact_id_strings
+      )
+      |> Repo.delete_all()
+
+      # Hard delete the artifact records
+      {count, _} =
+        from(a in Artifact,
+          where: a.id in ^artifact_ids
+        )
+        |> Repo.delete_all()
+
+      {:ok, count}
+    end
   end
 end

@@ -30,8 +30,8 @@ defmodule Command.Lineage.Edges do
   """
 
   import Ecto.Query
-  alias Command.Repo
   alias Command.Lineage.ProvenanceEdge
+  alias Command.Repo
 
   @relationships ~w(
     implements created_by step_of input_to output_of
@@ -108,15 +108,16 @@ defmodule Command.Lineage.Edges do
           {:ok, :batch_recorded} | {:error, term()}
   def record_batch(edges) do
     Repo.transaction(fn ->
-      Enum.each(edges, fn {source, target, rel, meta} ->
-        case record(source, target, rel, meta) do
-          {:ok, _} -> :ok
-          {:error, changeset} -> Repo.rollback(changeset)
-        end
-      end)
-
+      Enum.each(edges, &record_or_rollback/1)
       :batch_recorded
     end)
+  end
+
+  defp record_or_rollback({source, target, rel, meta}) do
+    case record(source, target, rel, meta) do
+      {:ok, _} -> :ok
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
 
   @doc """
