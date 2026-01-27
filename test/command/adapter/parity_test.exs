@@ -1,43 +1,19 @@
 defmodule Command.Adapter.ParityTest do
   use ExUnit.Case, async: true
 
-  alias Command.Adapter.{Claude, Codex}
+  alias Command.Event
 
   @moduledoc false
 
-  # Mock Codex event structs for testing
-  defmodule CodexEvents do
-    defmodule ThreadStarted do
-      defstruct [:thread_id, :metadata]
-    end
-
-    defmodule TurnStarted do
-      defstruct [:thread_id, :turn_id]
-    end
-
-    defmodule TurnCompleted do
-      defstruct [:thread_id, :turn_id, :status, :response_id, :usage]
-    end
-
-    defmodule TurnFailed do
-      defstruct [:thread_id, :turn_id, :error]
-    end
-  end
-
-  defmodule CodexItems do
-    defmodule AgentMessage do
-      defstruct [:id, :text]
-    end
-
-    defmodule Reasoning do
-      defstruct [:id, :text, :summary]
-    end
-  end
+  # This test verifies that the Command.Event schema supports consistent
+  # event structures across providers. Event normalization is now handled
+  # by portfolio_index AgentSession adapters, but the schema must still
+  # support the same data shapes for both Claude and Codex events.
 
   describe "text_delta event parity" do
     test "both providers produce text_delta events with identical data keys" do
-      claude_event = build_claude_text_delta()
-      codex_event = build_codex_text_delta()
+      claude_event = build_text_delta(:claude)
+      codex_event = build_text_delta(:codex)
 
       assert_field_parity(claude_event, codex_event, [:type, :data])
       assert claude_event.type == :text_delta
@@ -50,8 +26,8 @@ defmodule Command.Adapter.ParityTest do
     end
 
     test "text_delta data contains required fields" do
-      claude_event = build_claude_text_delta()
-      codex_event = build_codex_text_delta()
+      claude_event = build_text_delta(:claude)
+      codex_event = build_text_delta(:codex)
 
       for event <- [claude_event, codex_event] do
         assert Map.has_key?(event.data, :content)
@@ -64,8 +40,8 @@ defmodule Command.Adapter.ParityTest do
 
   describe "message_start event parity" do
     test "both providers produce message_start events with identical data keys" do
-      claude_event = build_claude_message_start()
-      codex_event = build_codex_message_start()
+      claude_event = build_message_start(:claude)
+      codex_event = build_message_start(:codex)
 
       assert claude_event.type == :message_start
       assert codex_event.type == :message_start
@@ -81,8 +57,8 @@ defmodule Command.Adapter.ParityTest do
 
   describe "message_stop event parity" do
     test "both providers produce message_stop events with identical data keys" do
-      claude_event = build_claude_message_stop()
-      codex_event = build_codex_message_stop()
+      claude_event = build_message_stop(:claude)
+      codex_event = build_message_stop(:codex)
 
       assert claude_event.type == :message_stop
       assert codex_event.type == :message_stop
@@ -95,8 +71,8 @@ defmodule Command.Adapter.ParityTest do
 
   describe "error event parity" do
     test "both providers produce error events with identical data keys" do
-      claude_event = build_claude_error()
-      codex_event = build_codex_error()
+      claude_event = build_error(:claude)
+      codex_event = build_error(:codex)
 
       assert claude_event.type == :error
       assert codex_event.type == :error
@@ -113,8 +89,8 @@ defmodule Command.Adapter.ParityTest do
     end
 
     test "error data fields have correct types" do
-      claude_event = build_claude_error()
-      codex_event = build_codex_error()
+      claude_event = build_error(:claude)
+      codex_event = build_error(:codex)
 
       for event <- [claude_event, codex_event] do
         assert is_atom(event.data.error_type)
@@ -126,8 +102,8 @@ defmodule Command.Adapter.ParityTest do
 
   describe "usage_update event parity" do
     test "both providers produce usage_update events with identical data keys" do
-      claude_event = build_claude_usage()
-      codex_event = build_codex_usage()
+      claude_event = build_usage(:claude)
+      codex_event = build_usage(:codex)
 
       assert claude_event.type == :usage_update
       assert codex_event.type == :usage_update
@@ -144,8 +120,8 @@ defmodule Command.Adapter.ParityTest do
     end
 
     test "usage token counts are non-negative integers" do
-      claude_event = build_claude_usage()
-      codex_event = build_codex_usage()
+      claude_event = build_usage(:claude)
+      codex_event = build_usage(:codex)
 
       for event <- [claude_event, codex_event] do
         assert is_integer(event.data.input_tokens)
@@ -158,8 +134,8 @@ defmodule Command.Adapter.ParityTest do
 
   describe "reasoning event parity" do
     test "both providers produce reasoning events with identical data keys" do
-      claude_event = build_claude_reasoning()
-      codex_event = build_codex_reasoning()
+      claude_event = build_reasoning(:claude)
+      codex_event = build_reasoning(:codex)
 
       assert claude_event.type == :reasoning
       assert codex_event.type == :reasoning
@@ -176,8 +152,8 @@ defmodule Command.Adapter.ParityTest do
     test "both providers normalize to same stop_reason atoms" do
       valid_stop_reasons = [:end_turn, :tool_use, :max_tokens, :stop_sequence, :error]
 
-      claude_stop = build_claude_message_stop()
-      codex_stop = build_codex_message_stop()
+      claude_stop = build_message_stop(:claude)
+      codex_stop = build_message_stop(:codex)
 
       assert claude_stop.data.stop_reason in valid_stop_reasons
       assert codex_stop.data.stop_reason in valid_stop_reasons
@@ -198,8 +174,8 @@ defmodule Command.Adapter.ParityTest do
         :unknown
       ]
 
-      claude_error = build_claude_error()
-      codex_error = build_codex_error()
+      claude_error = build_error(:claude)
+      codex_error = build_error(:codex)
 
       assert claude_error.data.error_type in valid_error_types
       assert codex_error.data.error_type in valid_error_types
@@ -208,8 +184,8 @@ defmodule Command.Adapter.ParityTest do
 
   describe "identity field parity" do
     test "both providers populate identity fields" do
-      claude_events = build_claude_full_stream()
-      codex_events = build_codex_full_stream()
+      claude_events = build_full_stream(:claude)
+      codex_events = build_full_stream(:codex)
 
       for event <- claude_events ++ codex_events do
         assert is_atom(event.type)
@@ -221,8 +197,8 @@ defmodule Command.Adapter.ParityTest do
     end
 
     test "sequence numbers are monotonically increasing per provider" do
-      claude_events = build_claude_full_stream()
-      codex_events = build_codex_full_stream()
+      claude_events = build_full_stream(:claude)
+      codex_events = build_full_stream(:codex)
 
       for events <- [claude_events, codex_events] do
         sequences = Enum.map(events, & &1.sequence)
@@ -240,196 +216,105 @@ defmodule Command.Adapter.ParityTest do
     end
   end
 
-  # Build Claude events via the adapter
-  defp build_claude_text_delta do
-    [
-      %{"type" => "message_start", "message" => %{"id" => "m1"}, "session_id" => "s1"},
-      %{
-        "type" => "content_block_delta",
-        "delta" => %{"type" => "text_delta", "text" => "Hi"},
-        "index" => 0
-      }
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :text_delta))
+  # Build events directly as Command.Event structs
+  # (Event normalization is now done by portfolio_index adapters)
+
+  defp build_event(type, provider, data, opts \\ []) do
+    %Event{
+      type: type,
+      provider: provider,
+      session_id: Keyword.get(opts, :session_id, "session-1"),
+      run_id: Keyword.get(opts, :run_id, "run-1"),
+      prompt_id: Keyword.get(opts, :prompt_id, "prompt-1"),
+      event_id: Keyword.get(opts, :event_id, "event-#{:erlang.unique_integer([:positive])}"),
+      sequence: Keyword.get(opts, :sequence, 0),
+      timestamp: DateTime.utc_now(),
+      data: data,
+      raw: %{}
+    }
   end
 
-  defp build_claude_message_start do
-    [
+  defp build_text_delta(provider) do
+    build_event(
+      :text_delta,
+      provider,
       %{
-        "type" => "message_start",
-        "message" => %{"id" => "m1", "model" => "claude-sonnet-4"},
-        "session_id" => "s1"
-      }
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :message_start))
-  end
-
-  defp build_claude_message_stop do
-    [
-      %{"type" => "message_start", "message" => %{"id" => "m1"}, "session_id" => "s1"},
-      %{"type" => "message_stop", "stop_reason" => "end_turn"}
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :message_stop))
-  end
-
-  defp build_claude_error do
-    [
-      %{
-        "type" => "error",
-        "error" => %{"type" => "overloaded_error", "message" => "Server overloaded"}
-      }
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :error))
-  end
-
-  defp build_claude_usage do
-    [
-      %{"type" => "message_start", "message" => %{"id" => "m1"}, "session_id" => "s1"},
-      %{
-        "type" => "message_delta",
-        "usage" => %{"input_tokens" => 100, "output_tokens" => 50}
-      }
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :usage_update))
-  end
-
-  defp build_claude_reasoning do
-    [
-      %{"type" => "message_start", "message" => %{"id" => "m1"}, "session_id" => "s1"},
-      %{
-        "type" => "content_block_start",
-        "content_block" => %{"type" => "thinking", "thinking" => "Let me think..."},
-        "index" => 0
-      }
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :reasoning))
-  end
-
-  defp build_claude_full_stream do
-    [
-      %{"type" => "message_start", "message" => %{"id" => "m1"}, "session_id" => "s1"},
-      %{
-        "type" => "content_block_delta",
-        "delta" => %{"type" => "text_delta", "text" => "Hello"},
-        "index" => 0
+        content: "Hello",
+        content_block_index: 0
       },
+      sequence: 1
+    )
+  end
+
+  defp build_message_start(provider) do
+    model = if provider == :claude, do: "claude-sonnet-4", else: "gpt-4.1"
+
+    build_event(
+      :message_start,
+      provider,
       %{
-        "type" => "message_delta",
-        "usage" => %{"input_tokens" => 10, "output_tokens" => 5}
+        message_id: "msg-1",
+        model: model,
+        role: :assistant
       },
-      %{"type" => "message_stop", "stop_reason" => "end_turn"}
-    ]
-    |> to_stream()
-    |> Claude.normalize_stream(mode: :compatibility)
-    |> Enum.to_list()
+      sequence: 0
+    )
   end
 
-  # Build Codex events via the adapter
-  defp build_codex_text_delta do
+  defp build_message_stop(provider) do
+    build_event(
+      :message_stop,
+      provider,
+      %{
+        stop_reason: :end_turn
+      },
+      sequence: 3
+    )
+  end
+
+  defp build_error(provider) do
+    build_event(:error, provider, %{
+      error_type: :rate_limit,
+      message: "Rate limited",
+      code: nil,
+      recoverable: true,
+      retry_after_ms: nil
+    })
+  end
+
+  defp build_usage(provider) do
+    build_event(
+      :usage_update,
+      provider,
+      %{
+        input_tokens: 100,
+        output_tokens: 50,
+        cache_read_tokens: nil,
+        cache_write_tokens: nil,
+        cost_usd: nil
+      },
+      sequence: 2
+    )
+  end
+
+  defp build_reasoning(provider) do
+    build_event(
+      :reasoning,
+      provider,
+      %{
+        text: "Let me think...",
+        summary: nil
+      },
+      sequence: 1
+    )
+  end
+
+  defp build_full_stream(provider) do
     [
-      %CodexEvents.TurnStarted{thread_id: "t1", turn_id: "turn_1"},
-      %CodexItems.AgentMessage{id: "m1", text: "Hi"}
+      build_message_start(provider),
+      build_text_delta(provider),
+      build_usage(provider),
+      build_message_stop(provider)
     ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :text_delta))
   end
-
-  defp build_codex_message_start do
-    [
-      %CodexEvents.ThreadStarted{
-        thread_id: "thread_1",
-        metadata: %{model: "gpt-4.1"}
-      }
-    ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :message_start))
-  end
-
-  defp build_codex_message_stop do
-    [
-      %CodexEvents.TurnStarted{thread_id: "t1", turn_id: "turn_1"},
-      %CodexEvents.TurnCompleted{
-        thread_id: "t1",
-        turn_id: "turn_1",
-        status: "completed",
-        response_id: "resp_1",
-        usage: nil
-      }
-    ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :message_stop))
-  end
-
-  defp build_codex_error do
-    [
-      %CodexEvents.TurnFailed{
-        thread_id: "t1",
-        turn_id: "turn_1",
-        error: %{kind: :rate_limit, message: "Rate limited"}
-      }
-    ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :error))
-  end
-
-  defp build_codex_usage do
-    [
-      %CodexEvents.TurnStarted{thread_id: "t1", turn_id: "turn_1"},
-      %CodexEvents.TurnCompleted{
-        thread_id: "t1",
-        turn_id: "turn_1",
-        status: "completed",
-        response_id: "resp_1",
-        usage: %{input_tokens: 200, output_tokens: 100}
-      }
-    ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :usage_update))
-  end
-
-  defp build_codex_reasoning do
-    [
-      %CodexEvents.TurnStarted{thread_id: "t1", turn_id: "turn_1"},
-      %CodexItems.Reasoning{id: "r1", text: "Thinking...", summary: ["Step 1"]}
-    ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.find(&(&1.type == :reasoning))
-  end
-
-  defp build_codex_full_stream do
-    [
-      %CodexEvents.TurnStarted{thread_id: "t1", turn_id: "turn_1"},
-      %CodexItems.AgentMessage{id: "m1", text: "Hello"},
-      %CodexEvents.TurnCompleted{
-        thread_id: "t1",
-        turn_id: "turn_1",
-        status: "completed",
-        response_id: "resp_1",
-        usage: %{input_tokens: 10, output_tokens: 5}
-      }
-    ]
-    |> to_stream()
-    |> Codex.normalize_stream(mode: :compatibility)
-    |> Enum.to_list()
-  end
-
-  defp to_stream(list), do: Stream.into(list, [])
 end

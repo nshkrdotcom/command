@@ -217,7 +217,7 @@ defmodule Command.Costs do
   @doc """
   Records an AI operation cost entry.
 
-  Used by Altar.AI telemetry integration.
+  Used by portfolio telemetry integration.
   """
   @spec record_ai_operation(map()) :: {:ok, AICost.t()} | {:error, Ecto.Changeset.t()}
   def record_ai_operation(attrs) when is_map(attrs) do

@@ -2,18 +2,18 @@ defmodule Command.AI do
   @moduledoc """
   Command AI context.
 
-  Provides a thin wrapper around `Altar.AI.Client` with Command-specific
-  configuration loading and convenience helpers.
+  Provides a thin wrapper around portfolio adapters for LLM and embedding
+  operations. Delegates to `Command.Portfolio` for all AI capabilities.
 
   ## Examples
 
       {:ok, response} = Command.AI.generate("Summarize this session")
-      IO.puts(response.content)
+
+      {:ok, embedding} = Command.AI.embed("some text")
+
+      {:ok, classification} = Command.AI.classify("I love Elixir", ["positive", "negative"])
   """
 
-  alias Altar.AI.{Client, Config}
-
-  @type t :: Client.t()
   @type chat_completion_response :: %{
           content: String.t(),
           model: String.t(),
@@ -23,32 +23,21 @@ defmodule Command.AI do
         }
 
   @doc """
-  Builds an `Altar.AI.Client` using Command configuration.
-
-  Falls back to `:altar_ai` application config when Command has no profiles.
+  Generates text using the configured portfolio LLM adapter.
   """
-  @spec client(keyword()) :: t()
-  def client(opts \\ []) do
-    config = Keyword.get(opts, :config, load_config())
-    Client.new(config: config)
-  end
-
-  @doc """
-  Generates text using the configured adapter.
-  """
-  @spec generate(String.t(), keyword()) :: {:ok, Altar.AI.Response.t()} | {:error, term()}
+  @spec generate(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def generate(prompt, opts \\ []) do
-    {client, call_opts} = pop_client(opts)
-    Client.generate(client, prompt, call_opts)
+    messages = [%{role: :user, content: prompt}]
+    Command.Portfolio.complete(messages, opts)
   end
 
   @doc """
-  Streams generated text using the configured adapter.
+  Streams generated text using the configured portfolio LLM adapter.
   """
   @spec stream(String.t(), keyword()) :: {:ok, Enumerable.t()} | {:error, term()}
   def stream(prompt, opts \\ []) do
-    {client, call_opts} = pop_client(opts)
-    Client.stream(client, prompt, call_opts)
+    messages = [%{role: :user, content: prompt}]
+    Command.Portfolio.stream(messages, opts)
   end
 
   @doc """
@@ -56,8 +45,7 @@ defmodule Command.AI do
   """
   @spec embed(String.t(), keyword()) :: {:ok, [float()]} | {:error, term()}
   def embed(text, opts \\ []) do
-    {client, call_opts} = pop_client(opts)
-    Client.embed(client, text, call_opts)
+    Command.Portfolio.embed(text, opts)
   end
 
   @doc """
@@ -65,89 +53,59 @@ defmodule Command.AI do
   """
   @spec embed_batch([String.t()], keyword()) :: {:ok, [[float()]]} | {:error, term()}
   def embed_batch(texts, opts \\ []) do
-    {client, call_opts} = pop_client(opts)
-    Client.batch_embed(client, texts, call_opts)
+    Command.Portfolio.embed_batch(texts, opts)
   end
 
   @doc """
   Classifies text into one of the provided labels.
   """
   @spec classify(String.t(), [String.t()], keyword()) ::
-          {:ok, Altar.AI.Classification.t()} | {:error, term()}
+          {:ok, map()} | {:error, term()}
   def classify(text, labels, opts \\ []) do
-    {client, call_opts} = pop_client(opts)
-    Client.classify(client, text, labels, call_opts)
+    prompt = build_classification_prompt(text, labels)
+    messages = [%{role: :user, content: prompt}]
+
+    with {:ok, result} <- Command.Portfolio.complete(messages, opts) do
+      parse_classification(result, labels)
+    end
   end
 
   @doc """
-  ReqLLM-compatible chat completion interface.
+  Chat completion interface using portfolio LLM adapter.
   """
   @spec chat_completion(map(), keyword()) :: {:ok, chat_completion_response()} | {:error, term()}
   def chat_completion(params, opts \\ []) do
-    {client, call_opts} = pop_client(opts)
-    Client.chat_completion(client, params, call_opts)
+    messages = Map.get(params, :messages, Map.get(params, "messages", []))
+    Command.Portfolio.complete(messages, opts)
   end
 
-  defp pop_client(opts) do
-    case Keyword.pop(opts, :client) do
-      {nil, call_opts} -> {client(), call_opts}
-      {client, call_opts} -> {client, call_opts}
-    end
+  # Private helpers
+
+  defp build_classification_prompt(text, labels) do
+    labels_str = Enum.join(labels, ", ")
+
+    """
+    Classify the following text into exactly one of these categories: #{labels_str}
+
+    Text: #{text}
+
+    Respond with ONLY the category label, nothing else.
+    """
   end
 
-  defp load_config do
-    command_config = Config.from_application_env(:command)
-
-    config =
-      if map_size(command_config.profiles) == 0 do
-        Config.from_application_env(:altar_ai)
-      else
-        command_config
+  defp parse_classification(result, labels) do
+    content =
+      case result do
+        %{content: content} when is_binary(content) -> String.trim(content)
+        content when is_binary(content) -> String.trim(content)
+        _ -> ""
       end
 
-    normalize_config(config)
-  end
+    label =
+      Enum.find(labels, List.first(labels), fn label ->
+        String.downcase(content) == String.downcase(label)
+      end)
 
-  defp normalize_config(%Config{} = config) do
-    profiles =
-      config.profiles
-      |> Enum.map(fn {name, opts} -> {name, normalize_profile_opts(opts)} end)
-      |> Map.new()
-
-    %{config | profiles: profiles}
-  end
-
-  defp normalize_profile_opts(opts) when is_map(opts) do
-    opts
-    |> Enum.into([])
-    |> normalize_profile_opts()
-  end
-
-  defp normalize_profile_opts(opts) when is_list(opts) do
-    adapter = Keyword.get(opts, :adapter)
-    adapter_opts = Keyword.get(opts, :adapter_opts, [])
-
-    case adapter do
-      nil ->
-        opts
-
-      adapter when is_atom(adapter) ->
-        _ = Code.ensure_loaded(adapter)
-
-        built_adapter =
-          cond do
-            function_exported?(adapter, :new, 1) -> adapter.new(adapter_opts)
-            function_exported?(adapter, :new, 0) -> adapter.new()
-            function_exported?(adapter, :default, 0) -> adapter.default()
-            true -> adapter
-          end
-
-        opts
-        |> Keyword.put(:adapter, built_adapter)
-        |> Keyword.delete(:adapter_opts)
-
-      _struct ->
-        opts
-    end
+    {:ok, %{label: label, confidence: 1.0, raw_response: content}}
   end
 end

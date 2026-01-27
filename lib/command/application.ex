@@ -11,8 +11,6 @@ defmodule Command.Application do
 
   @impl true
   def start(_type, _args) do
-    Altar.AI.Integrations.Command.attach_telemetry()
-    Altar.AI.Integrations.FlowStone.setup_telemetry()
     _ = Command.Flowstone.ApprovalBridge.attach()
 
     children =

@@ -2,9 +2,13 @@ defmodule Command.Adapter do
   @moduledoc """
   Behaviour for provider stream adapters.
 
-  Adapters transform provider-specific events (from Claude Agent SDK or Codex SDK)
-  into the unified `Command.Event` schema. Each provider has a dedicated adapter
-  implementing this behaviour.
+  Defines the contract for adapters that transform provider-specific events
+  into the unified `Command.Event` schema.
+
+  > **Note:** Direct SDK adapters (`Command.Adapter.Claude` and
+  > `Command.Adapter.Codex`) have been removed. Event normalization is now
+  > handled by portfolio_index AgentSession adapters. Use
+  > `Command.AgentSessions` for agent session management.
 
   ## Callbacks
 
@@ -13,23 +17,10 @@ defmodule Command.Adapter do
   Takes a raw event stream from a provider and returns a stream of normalized
   `Command.Event` structs. This is the primary entry point for stream processing.
 
-  Options:
-  - `:mode` - `:strict` or `:compatibility` (default based on environment)
-  - `:prompt_id` - UUID for the prompt (generated if not provided)
-  - `:context` - Map with `run_id` and `session_id` for strict mode
-
   ### normalize_event/2
 
   Processes a single raw event and returns a list of normalized events plus
   updated state. Used internally by `normalize_stream/2`.
-
-  The state map tracks:
-  - `session_id` - Session identifier
-  - `run_id` - Run identifier
-  - `prompt_id` - Prompt identifier
-  - `sequence` - Event sequence counter
-  - `mode` - Normalization mode
-  - Provider-specific state (e.g., tool input accumulation)
 
   ### supports_event?/1
 
@@ -40,7 +31,6 @@ defmodule Command.Adapter do
   ### Strict Mode (Default in Production)
 
   - All provider-required fields must be present
-  - Context-derived fields (`run_id`, `session_id`) must be provided via options
   - Invalid events raise errors
   - No automatic fallback generation
 
@@ -56,24 +46,6 @@ defmodule Command.Adapter do
   1. Explicit `:mode` option
   2. Application config `:adapter_mode`
   3. Based on `Mix.env()` - `:strict` for `:prod`, `:compatibility` otherwise
-
-  ## Example
-
-      # Strict mode (production)
-      raw_stream
-      |> Command.Adapter.Claude.normalize_stream(
-        mode: :strict,
-        context: %{
-          run_id: "run-uuid",
-          session_id: "session-uuid"
-        }
-      )
-      |> Enum.to_list()
-
-      # Compatibility mode (development)
-      raw_stream
-      |> Command.Adapter.Codex.normalize_stream(mode: :compatibility)
-      |> Enum.to_list()
   """
 
   alias Command.Event

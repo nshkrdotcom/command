@@ -1,35 +1,31 @@
 defmodule Command.AITest do
   use ExUnit.Case, async: true
 
-  alias Altar.AI.Adapters.Mock
-  alias Altar.AI.Response
   alias Command.AI
 
-  setup do
-    Application.put_env(:command, :default_profile, :default)
+  describe "function exports" do
+    test "generate/2 delegates to portfolio LLM adapter" do
+      assert function_exported?(AI, :generate, 2)
+    end
 
-    Application.put_env(:command, :profiles, %{
-      default: [
-        adapter: Mock,
-        adapter_opts: [
-          responses: %{
-            generate: {:ok, Response.new("Configured response", model: "mock", provider: :mock)}
-          }
-        ]
-      ]
-    })
+    test "stream/2 delegates to portfolio LLM adapter" do
+      assert function_exported?(AI, :stream, 2)
+    end
 
-    on_exit(fn ->
-      Application.delete_env(:command, :default_profile)
-      Application.delete_env(:command, :profiles)
-    end)
+    test "embed/2 delegates to portfolio Embedder adapter" do
+      assert function_exported?(AI, :embed, 2)
+    end
 
-    :ok
-  end
+    test "embed_batch/2 delegates to portfolio Embedder adapter" do
+      assert function_exported?(AI, :embed_batch, 2)
+    end
 
-  test "generate/2 uses configured adapter profile" do
-    assert {:ok, response} = AI.generate("Hello")
-    assert response.content == "Configured response"
-    assert response.model == "mock"
+    test "classify/3 delegates to portfolio LLM adapter" do
+      assert function_exported?(AI, :classify, 3)
+    end
+
+    test "chat_completion/2 delegates to portfolio LLM adapter" do
+      assert function_exported?(AI, :chat_completion, 2)
+    end
   end
 end

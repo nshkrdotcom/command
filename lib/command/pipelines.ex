@@ -227,21 +227,17 @@ defmodule Command.Pipelines do
 
   defp maybe_add_ai_resource(resources, %Execution{} = execution, opts) do
     if Keyword.get(opts, :ai_enabled, true) do
-      adapter = Keyword.get(opts, :ai_adapter, Altar.AI.Adapters.Composite)
-      adapter_opts = Keyword.get(opts, :ai_adapter_opts, [])
-
       telemetry_metadata =
         opts
         |> Keyword.get(:ai_telemetry_metadata, %{})
         |> Map.merge(command_metadata_for_ai(execution, opts))
 
       config = %{
-        adapter: adapter,
-        adapter_opts: adapter_opts,
         telemetry_metadata: telemetry_metadata
       }
 
-      Map.put(resources, :ai, {Altar.AI.Integrations.FlowStone, config})
+      # AI resource uses portfolio adapters via Command.Portfolio
+      Map.put(resources, :ai, {Command.Portfolio, config})
     else
       resources
     end
@@ -453,14 +449,7 @@ defmodule Command.Pipelines do
   defp extract_tokens_out(%{output_tokens: output}) when is_integer(output), do: output
   defp extract_tokens_out(_), do: 0
 
-  defp calculate_cost_usd(nil, _tokens_in, _tokens_out), do: nil
-
-  defp calculate_cost_usd(model, tokens_in, tokens_out) do
-    case Altar.AI.Integrations.Command.calculate_cost(model, tokens_in, tokens_out) do
-      nil -> nil
-      cost when is_float(cost) -> Decimal.from_float(cost)
-    end
-  end
+  defp calculate_cost_usd(_model, _tokens_in, _tokens_out), do: nil
 
   defp native_to_ms(nil), do: nil
 

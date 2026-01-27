@@ -73,18 +73,12 @@ defmodule Command.MixProject do
 
       # Pipeline orchestration
       {:flowstone, path: "../flowstone"},
-      # Note: flowstone_ai merged into altar_ai as Altar.AI.Integrations.FlowStone
-      # See docs/20260105/07_ai_layer_consolidation.md
 
       # Multi-agent orchestration
       {:synapse, path: "../synapse"},
-      # Note: Synapse.ReqLLM replaced by Altar.AI.Integrations.Synapse
 
-      # Unified AI abstraction layer (consolidates flowstone_ai, Synapse.ReqLLM)
       # Tool contracts (ADM/LATER)
       {:altar, path: "../ALTAR", override: true},
-      # Unified LLM/embedding layer
-      {:altar_ai, path: "../altar_ai"},
 
       # Portfolio ecosystem - hexagonal architecture for RAG/LLM
       {:portfolio_core, path: "../portfolio_core", override: true},
@@ -105,7 +99,7 @@ defmodule Command.MixProject do
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.40.0", only: :dev, runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
       {:mox, "~> 1.1", only: :test},
       {:ex_machina, "~> 2.8", only: :test},
