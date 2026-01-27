@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Quality Gate Framework** - Enforcement checkpoints for workflow automation pipeline (ADR-0008)
+  - `Command.Gates.GateSpec` - Gate specification struct with category, criteria, and retry config
+  - `Command.Gates.GateCriterion` - Individual criterion struct with evaluator function and threshold
+  - `Command.Gates.Definitions` - 13 gate definitions across DOC (3), IMPL (7), and OPS (3) categories
+  - `Command.Gates.Engine` - Gate evaluation engine with telemetry, retry logic, and idempotent evaluation
+  - `Command.Gates.Override` - Override workflow with request, approve, reject lifecycle and ETS-backed store
+  - `Command.Gates.OverrideRequest` - Override request struct with justification, risk assessment, and decision tracking
+  - `Command.Gates.AuthorityMatrix` - Role-based authority matrix for override approval enforcement
+  - `Command.Gates.CostCeiling` - GATE-OPS-002 cost ceiling enforcement using Decimal arithmetic
+  - `Command.Test.ParityHelper` - Parity test framework with Jaccard similarity and threshold-based evaluation
+  - `Command.Test.FixtureHelper` - Test fixture management for JSON, provider responses, and git repos
+  - `Command.Test.HTTPMock` - Bypass-based HTTP mocking for Claude and Codex APIs
+  - Test fixtures for prompt sets, provider responses (Claude/Codex), normalized events, VCS, and approvals
+  - GitHub Actions workflow for quality gate enforcement in CI/CD
+  - Gate check script for command-line gate evaluation (`scripts/check_gate.exs`)
+  - Override expiration support with configurable duration
+  - Telemetry events for gate evaluation, cost ceiling checks, and ceiling exceeded alerts
 - `mix command.prompts` Mix task for prompt set execution (ADR-0005)
 - `Command.CLI.PromptRunner` for execution orchestration
 - `Command.CLI.ProgressDisplay` for TUI/JSON progress output

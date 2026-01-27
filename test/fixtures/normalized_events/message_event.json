@@ -1,0 +1,22 @@
+{
+  "event_type": "message",
+  "type": "message",
+  "normalized": {
+    "message_id": "msg_normalized_001",
+    "role": "assistant",
+    "content": "Hello, world!",
+    "model": "claude-opus-4-20260115"
+  },
+  "provider_specific": {
+    "claude": {
+      "id": "msg_01ABC123",
+      "type": "message",
+      "stop_reason": "end_turn"
+    },
+    "codex": {
+      "id": "resp_01ABC123",
+      "object": "response",
+      "status": "completed"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "type": "server_error",
+    "message": "The server had an error processing your request.",
+    "code": "server_error"
+  }
+}

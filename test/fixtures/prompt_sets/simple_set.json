@@ -1,0 +1,23 @@
+{
+  "id": "ps-001",
+  "name": "Simple Test Set",
+  "description": "A simple prompt set for testing",
+  "version": "1.0.0",
+  "prompts": {
+    "prompt_001": {
+      "content": "Write a hello world function in Elixir",
+      "order": 1,
+      "provider": "claude"
+    },
+    "prompt_002": {
+      "content": "Add documentation to the function",
+      "order": 2,
+      "provider": "claude"
+    }
+  },
+  "config": {
+    "model": "claude-opus-4-20260115",
+    "max_tokens": 4096,
+    "branch_strategy": "feature_branch"
+  }
+}

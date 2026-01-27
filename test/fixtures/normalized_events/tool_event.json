@@ -1,0 +1,23 @@
+{
+  "event_type": "tool_use",
+  "type": "tool_use",
+  "normalized": {
+    "name": "read_file",
+    "tool_use_id": "tool_normalized_001",
+    "input": {
+      "path": "/home/user/project/lib/hello.ex"
+    }
+  },
+  "provider_specific": {
+    "claude": {
+      "type": "tool_use",
+      "id": "toolu_01GHI789",
+      "name": "read_file"
+    },
+    "codex": {
+      "type": "function_call",
+      "id": "call_01GHI789",
+      "name": "read_file"
+    }
+  }
+}

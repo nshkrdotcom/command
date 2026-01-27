@@ -1,0 +1,21 @@
+{
+  "id": "resp_01ABC123",
+  "object": "response",
+  "output": [
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Here is a hello world function in Elixir:\n\n```elixir\ndef hello do\n  IO.puts(\"Hello, world!\")\nend\n```"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 26,
+    "output_tokens": 43,
+    "total_tokens": 69
+  }
+}

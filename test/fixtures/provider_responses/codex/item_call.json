@@ -1,0 +1,27 @@
+{
+  "id": "resp_01DEF456",
+  "object": "response",
+  "output": [
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "I'll read the file first."
+        }
+      ]
+    },
+    {
+      "type": "function_call",
+      "id": "call_01GHI789",
+      "name": "read_file",
+      "arguments": "{\"path\": \"/home/user/project/lib/hello.ex\"}"
+    }
+  ],
+  "usage": {
+    "input_tokens": 52,
+    "output_tokens": 28,
+    "total_tokens": 80
+  }
+}

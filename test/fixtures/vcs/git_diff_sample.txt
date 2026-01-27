@@ -1,0 +1,15 @@
+diff --git a/lib/command/gates/engine.ex b/lib/command/gates/engine.ex
+index abc1234..def5678 100644
+--- a/lib/command/gates/engine.ex
++++ b/lib/command/gates/engine.ex
+@@ -10,6 +10,12 @@ defmodule Command.Gates.Engine do
+   alias Command.Gates.{GateSpec, GateCriterion}
+
++  @doc """
++  Evaluate a gate against its criteria.
++  """
++  @spec evaluate_gate(String.t(), map()) :: :pass | {:fail, [map()]}
++  def evaluate_gate(gate_id, context) do
++    spec = load_gate_spec(gate_id)
+   end
+ end

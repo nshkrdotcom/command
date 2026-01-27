@@ -1,0 +1,13 @@
+{
+  "id": "approval-001",
+  "status": "pending",
+  "gate_id": "GATE-IMPL-006",
+  "justification": "Known flaky test in CI environment",
+  "risk_assessment": "Low - test is environment-specific",
+  "mitigations": [
+    "Manual verification completed locally",
+    "Monitoring added for affected functionality"
+  ],
+  "requested_by": "user-123",
+  "requested_at": "2026-01-17T10:00:00Z"
+}

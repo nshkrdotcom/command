@@ -110,6 +110,8 @@ defmodule Command.MixProject do
       {:mox, "~> 1.1", only: :test},
       {:ex_machina, "~> 2.8", only: :test},
       {:faker, "~> 0.18", only: :test},
+      # Note: bypass conflicts with ranch 2.x from cowboy
+      # HTTP mocking uses custom Plug-based implementation instead
       {:supertester, path: "../supertester", only: :test}
     ]
   end

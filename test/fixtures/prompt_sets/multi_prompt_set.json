@@ -1,0 +1,28 @@
+{
+  "id": "ps-002",
+  "name": "Multi-Prompt Test Set",
+  "description": "A prompt set with multiple prompts for testing",
+  "version": "1.0.0",
+  "prompts": {
+    "prompt_001": {
+      "content": "Create user schema",
+      "order": 1,
+      "provider": "claude"
+    },
+    "prompt_002": {
+      "content": "Create user context module",
+      "order": 2,
+      "provider": "claude"
+    },
+    "prompt_003": {
+      "content": "Add tests for user context",
+      "order": 3,
+      "provider": "codex"
+    }
+  },
+  "config": {
+    "model": "claude-opus-4-20260115",
+    "max_tokens": 8192,
+    "branch_strategy": "per_prompt_branch"
+  }
+}

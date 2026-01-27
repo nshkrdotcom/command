@@ -1,0 +1,13 @@
+{
+  "id": "approval-002",
+  "status": "approved",
+  "gate_id": "GATE-DOC-001",
+  "justification": "Documentation will be completed post-release",
+  "risk_assessment": "Low",
+  "mitigations": ["Post-release documentation sprint scheduled"],
+  "requested_by": "user-123",
+  "requested_at": "2026-01-17T09:00:00Z",
+  "approved_by": "po-456",
+  "approved_at": "2026-01-17T10:30:00Z",
+  "conditions": ["Complete documentation within 7 days"]
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "type": "response.created",
+    "response": {
+      "id": "resp_01JKL012",
+      "object": "response",
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "item": {
+      "type": "message",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello"
+        }
+      ]
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "item": {
+      "type": "message",
+      "content": [
+        {
+          "type": "output_text",
+          "text": " world"
+        }
+      ]
+    }
+  },
+  {
+    "type": "response.completed",
+    "response": {
+      "id": "resp_01JKL012",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 10,
+        "output_tokens": 5,
+        "total_tokens": 15
+      }
+    }
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "id": "approval-003",
+  "status": "rejected",
+  "gate_id": "GATE-OPS-002",
+  "justification": "Cost ceiling needs temporary increase",
+  "risk_assessment": "High - could lead to unexpected charges",
+  "mitigations": ["Will reduce scope after fix"],
+  "requested_by": "user-789",
+  "requested_at": "2026-01-17T08:00:00Z",
+  "rejected_by": "em-456",
+  "rejected_at": "2026-01-17T09:00:00Z",
+  "rejection_reason": "Insufficient justification for cost increase. Please reduce scope first."
+}

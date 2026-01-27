@@ -1,0 +1,24 @@
+{
+  "event_type": "usage_update",
+  "type": "usage_update",
+  "normalized": {
+    "input_tokens": 100,
+    "output_tokens": 50,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "cost_usd": 0.0045
+  },
+  "provider_specific": {
+    "claude": {
+      "input_tokens": 100,
+      "output_tokens": 50,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "codex": {
+      "input_tokens": 100,
+      "output_tokens": 50,
+      "total_tokens": 150
+    }
+  }
+}
